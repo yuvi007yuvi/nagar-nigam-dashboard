@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read and write their own data
+    match /{document=**} {
+      allow read, write: if request.auth != null && 
+                        request.auth.uid != null;
+    }
+    
+    // User roles collection - only accessible by the user or admin
+    match /userRoles/{userId} {
+      allow read, write: if request.auth != null && 
+                         (request.auth.uid == userId || 
+                          // Admin users can access all user roles
+                          // You would need to implement admin role checking here
+                          request.auth.token.admin == true);
+    }
+    
+    // Customers collection with user-specific data
+    match /customers/{document} {
+      allow read, write: if request.auth != null && 
+                         request.auth.uid != null;
+      // Store user ID with each document
+      allow create: if request.auth != null && 
+                    request.resource.data.keys().hasAll([
+                      'userId', 'userName', 'createdAt'
+                    ]) && 
+                    request.resource.data.userId == request.auth.uid;
+    }
+    
+    // User charges with user-specific data
+    match /userCharges/{document} {
+      allow read, write: if request.auth != null && 
+                         request.auth.uid != null;
+      // Store user ID with each document
+      allow create: if request.auth != null && 
+                    request.resource.data.keys().hasAll([
+                      'userId', 'userName', 'createdAt'
+                    ]) && 
+                    request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Fuel entries with user-specific data
+    match /fuelEntries/{document} {
+      allow read, write: if request.auth != null && 
+                         request.auth.uid != null;
+      // Store user ID with each document
+      allow create: if request.auth != null && 
+                    request.resource.data.keys().hasAll([
+                      'userId', 'userName', 'createdAt'
+                    ]) && 
+                    request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Weighments with user-specific data
+    match /weighments/{document} {
+      allow read, write: if request.auth != null && 
+                         request.auth.uid != null;
+      // Store user ID with each document
+      allow create: if request.auth != null && 
+                    request.resource.data.keys().hasAll([
+                      'userId', 'userName', 'createdAt'
+                    ]) && 
+                    request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Bulk collections with user-specific data
+    match /bulkCollections/{document} {
+      allow read, write: if request.auth != null && 
+                         request.auth.uid != null;
+      // Store user ID with each document
+      allow create: if request.auth != null && 
+                    request.resource.data.keys().hasAll([
+                      'userId', 'userName', 'createdAt'
+                    ]) && 
+                    request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Coverage records with user-specific data
+    match /coverageRecords/{document} {
+      allow read, write: if request.auth != null && 
+                         request.auth.uid != null;
+      // Store user ID with each document
+      allow create: if request.auth != null && 
+                    request.resource.data.keys().hasAll([
+                      'userId', 'userName', 'createdAt'
+                    ]) && 
+                    request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Attendance records with user-specific data
+    match /attendanceRecords/{document} {
+      allow read, write: if request.auth != null && 
+                         request.auth.uid != null;
+      // Store user ID with each document
+      allow create: if request.auth != null && 
+                    request.resource.data.keys().hasAll([
+                      'userId', 'userName', 'createdAt'
+                    ]) && 
+                    request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Complaints with user-specific data
+    match /complaints/{document} {
+      allow read, write: if request.auth != null && 
+                         request.auth.uid != null;
+      // Store user ID with each document
+      allow create: if request.auth != null && 
+                    request.resource.data.keys().hasAll([
+                      'userId', 'userName', 'createdAt'
+                    ]) && 
+                    request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Zones collection - read-only for all authenticated users
+    match /zones/{document} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only admins can write
+    }
+    
+    // Wards collection - read-only for all authenticated users
+    match /wards/{document} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only admins can write
+    }
+  }
+}
