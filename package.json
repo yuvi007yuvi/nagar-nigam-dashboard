@@ -15,7 +15,6 @@
     "test-user-storage": "node services/simpleUserTest.ts"
   },
   "dependencies": {
-    "@google/genai": "^1.30.0",
     "@tailwindcss/vite": "^4.1.17",
     "firebase": "^12.6.0",
     "framer-motion": "^11.0.0",
