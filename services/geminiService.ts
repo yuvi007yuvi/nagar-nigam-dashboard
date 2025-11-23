@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, SchemaType } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 // Initialize Gemini AI
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
@@ -18,12 +18,12 @@ export const generateDashboardInsight = async (dataContext: string) => {
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: "OBJECT",
           properties: {
-            summary: { type: Type.STRING, description: "A brief 2-sentence executive summary of the city's current status." },
+            summary: { type: "STRING", description: "A brief 2-sentence executive summary of the city's current status." },
             recommendations: { 
-              type: Type.ARRAY, 
-              items: { type: Type.STRING },
+              type: "ARRAY", 
+              items: { type: "STRING" },
               description: "List of 3 specific actionable recommendations."
             }
           }
