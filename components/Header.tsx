@@ -133,16 +133,6 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, title, userId }) => {
 
         {/* Right side - User info and actions */}
         <div className="flex items-center gap-3 sm:gap-4">
-          {/* Search Bar (Hidden on mobile for now) */}
-          <div className="hidden md:flex items-center bg-gray-50/50 dark:bg-gray-700/50 border border-gray-200/50 dark:border-gray-600/50 rounded-xl px-3 py-2 w-64 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500/50 transition-all">
-            <Search size={16} className="text-gray-400 mr-2" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="bg-transparent border-none outline-none text-sm w-full placeholder-gray-400 text-gray-700 dark:text-gray-200 dark:placeholder-gray-500"
-            />
-          </div>
-
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
