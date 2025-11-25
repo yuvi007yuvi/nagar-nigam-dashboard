@@ -87,3 +87,30 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Toggle Checkbox Animation */
+.toggle-checkbox {
+  transition: right 0.3s ease;
+}
+
+.toggle-checkbox:checked {
+  right: 0;
+  border-color: #10b981;
+}
+
+.toggle-checkbox:not(:checked) {
+  right: calc(100% - 1rem);
+  border-color: #d1d5db;
+}
+
+.toggle-label {
+  transition: background-color 0.3s ease;
+}
+
+.toggle-checkbox:checked~.toggle-label {
+  background-color: #10b981;
+}
+
+.toggle-checkbox:not(:checked)~.toggle-label {
+  background-color: #d1d5db;
+}
