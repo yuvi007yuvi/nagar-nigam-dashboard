@@ -14,12 +14,12 @@ const NoDataView = ({
     message = "No records found",
     illustration: Illustration = Inbox,
 }) => (
-    <div className="flex flex-col items-center justify-center py-16 text-center bg-white border-t border-gray-100">
-        <div className="bg-gray-50 p-4 rounded-full mb-4">
-            <Illustration size={32} className="text-gray-400" />
+    <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
+        <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-full mb-4">
+            <Illustration size={32} className="text-gray-400 dark:text-gray-500" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900">{message}</h3>
-        <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">{message}</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
             There is currently no data to display in this section. New records will appear here automatically.
         </p>
     </div>
@@ -68,12 +68,12 @@ const ComplaintPage = () => {
                 </div>
 
                 {/* Filters */}
-                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-end gap-4">
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col md:flex-row justify-between items-end gap-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 w-full">
                         {["Zone", "All Wards", "Complaint Type", "Status"].map(
                             (label) => (
                                 <div key={label} className="relative">
-                                    <select className="w-full bg-white border border-gray-200 text-gray-600 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-green-500 shadow-sm">
+                                    <select className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-green-500 shadow-sm">
                                         <option>{label}</option>
                                     </select>
                                     <ChevronDown
@@ -86,7 +86,7 @@ const ComplaintPage = () => {
                     </div>
 
                     <div className="flex gap-2 w-full md:w-auto shrink-0">
-                        <button className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-100 text-green-700 text-xs font-medium rounded-lg hover:bg-green-100 whitespace-nowrap">
+                        <button className="flex items-center gap-1.5 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 text-green-700 dark:text-green-400 text-xs font-medium rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 whitespace-nowrap">
                             <Calendar size={14} /> Date Filter
                         </button>
                         <button className="flex items-center gap-1.5 px-6 py-2 bg-[#22c55e] text-white text-xs font-bold rounded-lg hover:bg-[#16a34a] shadow-sm whitespace-nowrap">
@@ -99,7 +99,7 @@ const ComplaintPage = () => {
             <p className="text-xs text-gray-500">Total Rows: 0</p>
 
             {/* Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[1500px]">
                         <thead className="bg-[#22c55e] text-white">
@@ -132,7 +132,7 @@ const ComplaintPage = () => {
                             </tr>
                         </thead>
 
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                             {complaintsData.length === 0 && (
                                 <tr>
                                     <td colSpan={13}>
@@ -145,9 +145,9 @@ const ComplaintPage = () => {
                 </div>
 
                 {/* Pagination */}
-                <div className="p-4 border-t border-gray-200 flex items-center justify-between bg-white">
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">
                     <div className="relative">
-                        <select className="appearance-none bg-white border border-gray-300 text-gray-700 text-xs rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:border-green-500">
+                        <select className="appearance-none bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:border-green-500">
                             <option>10</option>
                         </select>
                         <ChevronDown
@@ -157,7 +157,7 @@ const ComplaintPage = () => {
                     </div>
 
                     <div className="flex gap-1">
-                        <button className="px-2 py-1 bg-gray-200 rounded text-gray-500 text-xs disabled:opacity-50">
+                        <button className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-gray-500 dark:text-gray-400 text-xs disabled:opacity-50">
                             «
                         </button>
                         <button className="px-2.5 py-1 bg-[#10b981] text-white rounded text-xs font-medium shadow-sm">
@@ -166,12 +166,12 @@ const ComplaintPage = () => {
                         {[2, 3, 4, 5, 6].map((n) => (
                             <button
                                 key={n}
-                                className="px-2.5 py-1 bg-white border border-gray-300 text-gray-600 rounded text-xs hover:bg-gray-50"
+                                className="px-2.5 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-600"
                             >
                                 {n}
                             </button>
                         ))}
-                        <button className="px-2 py-1 bg-gray-200 rounded text-gray-600 text-xs hover:bg-gray-300">
+                        <button className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300 text-xs hover:bg-gray-300 dark:hover:bg-gray-600">
                             »
                         </button>
                     </div>

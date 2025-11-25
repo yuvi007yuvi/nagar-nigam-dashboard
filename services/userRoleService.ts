@@ -15,18 +15,19 @@ export const ALL_MODULES = [
   'Fuel',
   'Weighment',
   'Bulk Collection',
-  'Coverage Monitoring',
+  'Live Vehicle',
   'Attendance',
   'Complaint',
   'Admin',
   'KPI Dashboard',
-  'Roles'
+  'Roles',
+  'Settings'
 ];
 
 // Default permissions for roles
 const DEFAULT_ROLE_PERMISSIONS = {
-  'admin': ALL_MODULES,
-  'basic_user': ['Complaint']
+  'admin': [...ALL_MODULES, 'Profile'],
+  'basic_user': ['Complaint', 'Profile']
 };
 
 // Interface for Role
@@ -133,6 +134,18 @@ export const initializeDefaultRoles = async () => {
         'Full access to all modules'
       );
       console.log('Initialized Admin role');
+    } else {
+      // Check if Settings is missing from Admin role and update if needed
+      const adminData = adminSnap.data() as Role;
+      if (!adminData.modules.includes('Settings')) {
+        await updateRole(
+          ROLES.ADMIN,
+          'Administrator',
+          DEFAULT_ROLE_PERMISSIONS.admin,
+          'Full access to all modules'
+        );
+        console.log('Updated Admin role with Settings module');
+      }
     }
 
     // Check if basic user role exists

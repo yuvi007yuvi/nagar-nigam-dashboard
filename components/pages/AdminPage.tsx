@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ROLES } from '../../services/userRoleService';
-import { User, Shield, Users, Plus, RefreshCw, Settings, Database, Bell, BarChart3, Lock, Key, Monitor } from 'lucide-react';
+import { User, Shield, Users, Plus, RefreshCw, Settings, Database, Bell, BarChart3, Lock, Key, Monitor, Truck } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
 
 // --- Admin Page ---
@@ -25,7 +25,7 @@ const AdminPage = ({ currentUser }: { currentUser: any }) => {
             description: 'Configure system-wide settings',
             icon: Settings,
             color: 'bg-purple-500',
-            path: '#'
+            path: '/settings'
         },
         {
             title: 'Database Management',
@@ -54,6 +54,13 @@ const AdminPage = ({ currentUser }: { currentUser: any }) => {
             icon: BarChart3,
             color: 'bg-green-500',
             path: '#'
+        },
+        {
+            title: 'Bulk Collection',
+            description: 'Manage bulk collection of waste',
+            icon: Truck,
+            color: 'bg-indigo-600',
+            path: '/bulk-collection'
         }
     ];
 
@@ -86,16 +93,16 @@ const AdminPage = ({ currentUser }: { currentUser: any }) => {
                         <motion.div
                             key={index}
                             whileHover={{ y: -5 }}
-                            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                            className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 hover:shadow-md transition-shadow cursor-pointer"
                             onClick={() => module.path !== '#' && navigate(module.path)}
                         >
                             <div className={`w-12 h-12 ${module.color} rounded-xl flex items-center justify-center text-white mb-4`}>
                                 <IconComponent size={24} />
                             </div>
-                            <h3 className="font-semibold text-gray-800 mb-2">{module.title}</h3>
-                            <p className="text-sm text-gray-500">{module.description}</p>
+                            <h3 className="font-semibold text-gray-800 dark:text-white mb-2">{module.title}</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{module.description}</p>
                             {module.path === '#' && (
-                                <div className="mt-3 flex items-center text-xs text-gray-400">
+                                <div className="mt-3 flex items-center text-xs text-gray-400 dark:text-gray-500">
                                     <Lock size={12} className="mr-1" />
                                     Coming soon
                                 </div>

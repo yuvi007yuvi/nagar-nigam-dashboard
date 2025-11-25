@@ -26,7 +26,7 @@ const SmartRedirect: React.FC<SmartRedirectProps> = ({ userId }) => {
                         'Fuel': '/fuel',
                         'Weighment': '/weighment',
                         'Bulk Collection': '/bulk-collection',
-                        'Coverage Monitoring': '/coverage-monitoring',
+                        'Live Vehicle': '/live-vehicle',
                         'Attendance': '/attendance',
                         'Complaint': '/complaint',
                         'Admin': '/admin',

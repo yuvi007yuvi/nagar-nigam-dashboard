@@ -6,8 +6,8 @@ import SmartRedirect from './components/SmartRedirect';
 import ProtectedRoute from './components/ProtectedRoute';
 import {
   CustomersPage, UserChargePage, FuelPage, WeighmentPage,
-  BulkCollectionPage, CoverageMonitoringPage, AttendancePage,
-  ComplaintPage, AdminPage, KPIDashboardPage, RolesPage, CitizenPage, UserManagement
+  BulkCollectionPage, LiveVehiclePage, AttendancePage,
+  ComplaintPage, AdminPage, KPIDashboardPage, RolesPage, CitizenPage, UserManagement, ProfilePage, SettingsPage
 } from './components/Pages';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
@@ -16,6 +16,7 @@ import { onAuthStateChange } from './services/authService';
 import { DataProvider } from './services/DataContext';
 import { initializeDefaultRoles, assignDefaultRoleIfNeeded } from './services/userRoleService';
 import { storeUserLogin } from './services/userManagementService';
+import { ThemeProvider } from './services/ThemeContext';
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -64,82 +65,94 @@ function App() {
 
   return (
     <DataProvider userId={user?.uid}>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
+      <ThemeProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
 
-        {/* Protected Routes wrapped in Layout */}
-        <Route element={user ? <Layout userId={user.uid} /> : <Navigate to="/login" />}>
-          <Route path="/" element={user ? <SmartRedirect userId={user.uid} /> : <Navigate to="/login" />} />
-          <Route path="/dashboard" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="Dashboard">
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/customers" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="Customers">
-              <CustomersPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/user-charge" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="User Charge">
-              <UserChargePage />
-            </ProtectedRoute>
-          } />
-          <Route path="/fuel" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="Fuel">
-              <FuelPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/weighment" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="Weighment">
-              <WeighmentPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-collection" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="Bulk Collection">
-              <BulkCollectionPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/coverage-monitoring" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="Coverage Monitoring">
-              <CoverageMonitoringPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/attendance" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="Attendance">
-              <AttendancePage />
-            </ProtectedRoute>
-          } />
-          <Route path="/complaint" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="Complaint">
-              <ComplaintPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
-              <AdminPage currentUser={user} />
-            </ProtectedRoute>
-          } />
-          <Route path="/kpi-dashboard" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="KPI Dashboard">
-              <KPIDashboardPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/roles" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="Roles">
-              <RolesPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/user-management" element={
-            <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
-              <UserManagement />
-            </ProtectedRoute>
-          } />
-          <Route path="/citizen" element={<CitizenPage currentUser={user} />} />
-          {/* Catch all - redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
+          {/* Protected Routes wrapped in Layout */}
+          <Route element={user ? <Layout userId={user.uid} /> : <Navigate to="/login" />}>
+            <Route path="/" element={user ? <SmartRedirect userId={user.uid} /> : <Navigate to="/login" />} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Dashboard">
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/customers" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Customers">
+                <CustomersPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/user-charge" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="User Charge">
+                <UserChargePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/fuel" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Fuel">
+                <FuelPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/weighment" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Weighment">
+                <WeighmentPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-collection" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Bulk Collection">
+                <BulkCollectionPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/live-vehicle" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Live Vehicle">
+                <LiveVehiclePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/attendance" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Attendance">
+                <AttendancePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/complaint" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Complaint">
+                <ComplaintPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                <AdminPage currentUser={user} />
+              </ProtectedRoute>
+            } />
+            <Route path="/kpi-dashboard" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="KPI Dashboard">
+                <KPIDashboardPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/roles" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Roles">
+                <RolesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/user-management" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                <UserManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Profile">
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute userId={user?.uid || ''} requiredModule="Settings">
+                <SettingsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/citizen" element={<CitizenPage currentUser={user} />} />
+            {/* Catch all - redirect to dashboard */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </ThemeProvider>
     </DataProvider>
   );
 }

@@ -21,6 +21,7 @@ const KPIGauge = ({ value, color }: { value: number, color: string }) => {
                     stroke="#f3f4f6"
                     strokeWidth="8"
                     fill="transparent"
+                    className="dark:stroke-gray-700"
                 />
                 {/* Progress */}
                 <circle
@@ -37,7 +38,7 @@ const KPIGauge = ({ value, color }: { value: number, color: string }) => {
                 />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-                <span className={`text-xl font-bold ${value === 0 ? 'text-gray-400' : 'text-gray-800'}`}>{value}%</span>
+                <span className={`text-xl font-bold ${value === 0 ? 'text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-white'}`}>{value}%</span>
             </div>
         </div>
     );
@@ -45,17 +46,17 @@ const KPIGauge = ({ value, color }: { value: number, color: string }) => {
 
 const KPICard = ({ title, value, type = 'chart', color = "#e5e7eb" }: any) => {
     return (
-        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col h-full min-h-[180px] hover:shadow-md transition-shadow">
-            <h4 className="font-bold text-gray-700 text-xs sm:text-sm mb-4 h-8 leading-tight">{title}</h4>
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col h-full min-h-[180px] hover:shadow-md transition-shadow">
+            <h4 className="font-bold text-gray-700 dark:text-gray-200 text-xs sm:text-sm mb-4 h-8 leading-tight">{title}</h4>
             <div className="flex-1 flex items-center justify-center">
                 {type === 'chart' ? (
                     <KPIGauge value={typeof value === 'number' ? value : 0} color={color} />
                 ) : (
-                    <div className="text-xl font-bold text-gray-600">{value}</div>
+                    <div className="text-xl font-bold text-gray-600 dark:text-gray-300">{value}</div>
                 )}
             </div>
-            <div className="mt-4 pt-2 border-t border-gray-50 text-[10px] text-gray-400 cursor-pointer hover:text-blue-600 flex items-center gap-1">
-                View More <div className="w-3 h-3 rounded-full border border-gray-300 flex items-center justify-center text-[8px] pb-0.5">@</div>
+            <div className="mt-4 pt-2 border-t border-gray-50 dark:border-gray-700 text-[10px] text-gray-400 dark:text-gray-500 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1">
+                View More <div className="w-3 h-3 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[8px] pb-0.5">@</div>
             </div>
         </div>
     )
@@ -115,7 +116,7 @@ const KPIDashboardPage = () => {
 
             {kpiSections.map((section, idx) => (
                 <div key={idx} className="space-y-3">
-                    <h3 className="text-gray-600 text-sm font-medium pl-1">{section.title}</h3>
+                    <h3 className="text-gray-600 dark:text-gray-400 text-sm font-medium pl-1">{section.title}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                         {section.cards.map((card, cIdx) => (
                             <KPICard key={cIdx} {...card} />

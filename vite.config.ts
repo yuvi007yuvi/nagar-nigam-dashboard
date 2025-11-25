@@ -4,20 +4,27 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
-    return {
-      server: {
-        port: 3000,
-        host: '0.0.0.0',
-      },
-      plugins: [
-        react(),
-        tailwindcss()
-      ],
-      resolve: {
-        alias: {
-          '@': path.resolve(__dirname, '.'),
+  const env = loadEnv(mode, '.', '');
+  return {
+    server: {
+      port: 3000,
+      host: '0.0.0.0',
+      proxy: {
+        '/api/vehicle': {
+          target: 'https://oempowersupply.in',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/vehicle/, '/naturegreen.php')
         }
       }
-    };
+    },
+    plugins: [
+      react(),
+      tailwindcss()
+    ],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      }
+    }
+  };
 });
