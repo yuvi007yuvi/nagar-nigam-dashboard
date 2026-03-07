@@ -37,6 +37,7 @@ export { default as RolesPage } from './pages/RolesPage';
 export { default as CitizenPage } from './pages/CitizenPage';
 export { default as UserManagement } from './pages/UserManagement';
 export { default as SettingsPage } from './pages/SettingsPage';
+export { default as POIMonitoringPage } from './pages/POIMonitoringPage';
 export { default as AccessDenied } from './pages/AccessDenied';
 
 export const PageHeader = ({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) => {

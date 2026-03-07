@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Wallet, Fuel, Scale,
   Trash2, Map, CalendarCheck, AlertCircle,
   Settings, BarChart3, X, ChevronRight, RefreshCw, User,
-  LogOut, HelpCircle, Shield
+  LogOut, HelpCircle, Shield, Home
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAllowedModules } from '../services/userRoleService';
@@ -73,6 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userId }) => {
     { name: 'Admin', icon: Shield, path: '/admin' },
     { name: 'Settings', icon: Settings, path: '/settings' },
     { name: 'KPI Dashboard', icon: BarChart3, path: '/kpi-dashboard' },
+    { name: 'POI Monitoring', icon: Home, path: '/poi-monitoring' },
     { name: 'Roles', icon: Users, path: '/roles' },
     { name: 'Profile', icon: User, path: '/profile' }
   ];

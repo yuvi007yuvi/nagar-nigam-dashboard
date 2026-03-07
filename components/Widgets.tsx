@@ -29,7 +29,7 @@ export const ColoredStatCard: React.FC<ColoredStatCardProps> = ({ title, value, 
       transition={{ duration: 0.4, delay, type: "spring", stiffness: 100 }}
       whileHover={{ y: -5, scale: 1.02 }}
       onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-${color.split('-')[1]}-500/20 transition-all duration-300 text-white ${color} min-h-[160px] flex flex-col justify-between group ${onClick ? 'cursor-pointer' : ''} border border-white/30`}
+      className={`relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-${color.split('-')[1]}-500/20 transition-all duration-300 text-white ${color} min-h-[160px] flex flex-col justify-between group ${onClick ? 'cursor-pointer' : ''} border border-white/40`}
     >
       <div className="p-5 relative z-10 flex flex-col h-full">
         <div className="flex justify-between items-start">
@@ -76,7 +76,7 @@ const WidgetContainer: React.FC<{ children: React.ReactNode; className?: string 
   <motion.div
     whileHover={{ y: -4, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
     transition={{ type: "spring", stiffness: 300, damping: 30 }}
-    className={`glass shadow-xl hover:shadow-2xl dark:bg-gray-800/50 dark:border-gray-700 rounded-2xl p-5 h-full flex flex-col relative overflow-hidden transition-all duration-300 border border-white/40 ${className}`}
+    className={`glass shadow-xl hover:shadow-2xl dark:bg-gray-800/50 dark:border-gray-700 rounded-2xl p-5 h-full flex flex-col relative overflow-hidden transition-all duration-300 border border-gray-100 dark:border-gray-700 ${className}`}
   >
     {children}
   </motion.div>
@@ -176,46 +176,59 @@ export const ComplaintChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
       </h3>
 
       {data.length > 0 ? (
-        <div className="flex-1 min-h-[150px] flex items-center relative z-10">
-          <div className="absolute -top-6 -right-6 opacity-10">
+        <div className="flex-1 flex items-center relative z-10 min-h-0">
+          <div className="absolute -top-6 -right-6 opacity-5 pointer-events-none">
             <AlertIllustration className="w-40 h-40" />
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius={45}
-                outerRadius={65}
-                paddingAngle={5}
-                dataKey="value"
-                cornerRadius={6}
-                stroke="none"
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)' }}
-                itemStyle={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}
-              />
-              <Legend
-                layout="vertical"
-                verticalAlign="middle"
-                align="right"
-                iconType="circle"
-                iconSize={8}
-                formatter={(value, entry: any) => (
-                  <span className="text-xs text-gray-600 dark:text-gray-300 ml-1 font-medium">{entry.payload.value} {value}</span>
-                )}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute left-[34%] top-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-            <span className="text-2xl font-bold text-gray-800 dark:text-white block leading-none font-display">{data.reduce((acc, curr) => acc + curr.value, 0)}</span>
-            <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Total</span>
+
+          <div className="flex items-center w-full gap-4">
+            {/* Chart Container */}
+            <div className="relative w-[140px] h-[140px] flex-shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={48}
+                    outerRadius={65}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                    cornerRadius={6}
+                  >
+                    {data.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+
+              {/* Perfectly Centered Total */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-2xl font-black text-gray-800 dark:text-white leading-none font-display">
+                  {data.reduce((acc, curr) => acc + curr.value, 0)}
+                </span>
+                <span className="text-[8px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1">Total</span>
+              </div>
+            </div>
+
+            {/* Custom Legend */}
+            <div className="flex-1 flex flex-col gap-2.5 pr-2">
+              {[...data].reverse().map((item, i) => (
+                <div key={i} className="flex items-center justify-between group">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400 group-hover:text-gray-900 transition-colors">
+                      {item.name}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-black text-gray-700 dark:text-gray-200">
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       ) : (
@@ -336,7 +349,7 @@ export const POIWidget: React.FC<{ total?: number, visited?: number }> = ({ tota
         <EmptyState illustration={MapIllustration} message="No POI data loaded" />
       )}
 
-      <div className="mt-auto pt-4 text-[10px] text-gray-400 hover:text-teal-600 flex items-center gap-1 cursor-pointer group relative z-10 transition-colors">
+      <div className="mt-auto pt-4 text-[10px] text-gray-400 font-bold hover:text-teal-600 flex items-center gap-1 cursor-pointer group relative z-10 transition-colors uppercase tracking-widest">
         View Detailed Report <ArrowRight size={10} className="group-hover:translate-x-1 transition-transform" />
       </div>
     </WidgetContainer>
@@ -353,43 +366,60 @@ export const CustomerChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
       </h3>
 
       {data.length > 0 ? (
-        <div className="flex-1 min-h-[150px] flex items-center relative z-10">
-          <div className="absolute top-10 right-0 opacity-10 pointer-events-none">
+        <div className="flex-1 flex items-center relative z-10 min-h-0">
+          <div className="absolute top-10 right-0 opacity-5 pointer-events-none">
             <PeopleIllustration className="w-32 h-32" />
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <PieChart>
-              <Pie
-                data={data}
-                cx="40%"
-                cy="50%"
-                innerRadius={45}
-                outerRadius={65}
-                paddingAngle={2}
-                dataKey="value"
-                cornerRadius={6}
-                stroke="none"
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)' }}
-                itemStyle={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}
-              />
-              <Legend
-                layout="vertical"
-                verticalAlign="middle"
-                align="right"
-                iconType="circle"
-                iconSize={8}
-                formatter={(value, entry: any) => (
-                  <span className="text-[10px] text-gray-600 dark:text-gray-300 ml-1 font-medium">{value}</span>
-                )}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+
+          <div className="flex items-center w-full gap-4">
+            {/* Chart Container */}
+            <div className="relative w-[130px] h-[130px] flex-shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={42}
+                    outerRadius={60}
+                    paddingAngle={3}
+                    dataKey="value"
+                    stroke="none"
+                    cornerRadius={6}
+                  >
+                    {data.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+
+              {/* Centered % */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xl font-black text-gray-800 dark:text-white leading-none font-display">
+                  {data.reduce((acc, curr) => acc + curr.value, 0)}%
+                </span>
+                <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Users</span>
+              </div>
+            </div>
+
+            {/* Custom Legend */}
+            <div className="flex-1 flex flex-col gap-2 pr-2">
+              {data.map((item, i) => (
+                <div key={i} className="flex items-center justify-between group">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 group-hover:text-gray-800 transition-colors">
+                      {item.name}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black text-gray-700 dark:text-gray-200">
+                    {item.value}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
         <EmptyState illustration={PeopleIllustration} message="No customer data" />

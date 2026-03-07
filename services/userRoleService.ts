@@ -21,13 +21,14 @@ export const ALL_MODULES = [
   'Admin',
   'KPI Dashboard',
   'Roles',
+  'POI Monitoring',
   'Settings'
 ];
 
 // Default permissions for roles
 const DEFAULT_ROLE_PERMISSIONS = {
   'admin': [...ALL_MODULES, 'Profile'],
-  'basic_user': ['Complaint', 'Profile']
+  'basic_user': ['Complaint', 'Profile', 'POI Monitoring']
 };
 
 // Interface for Role

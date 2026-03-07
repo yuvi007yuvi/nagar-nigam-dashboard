@@ -6,7 +6,8 @@ import L from 'leaflet';
 import {
   Wallet, Fuel, Truck,
   CalendarCheck, AlertTriangle, Sparkles,
-  Recycle, IndianRupee, BarChart3, Activity, Map as MapIcon
+  Recycle, IndianRupee, BarChart3, Activity, Map as MapIcon,
+  LayoutDashboard, Clock
 } from 'lucide-react';
 import {
   ColoredStatCard, UserChargeWidget, VehicleStatusWidget,
@@ -100,6 +101,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
     visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
   };
 
+  // Demo data for widgets
+  const userChargeData = [
+    { label: 'Residential', value: '₹1,42,500', color: 'bg-purple-500' },
+    { label: 'Commercial', value: '₹85,300', color: 'bg-blue-500' },
+    { label: 'Institutional', value: '₹18,000', color: 'bg-indigo-500' }
+  ];
+
+  const complaintData = [
+    { name: 'Resolved', value: 38, color: '#10b981' },
+    { name: 'Pending', value: 12, color: '#f59e0b' },
+    { name: 'Escalated', value: 4, color: '#ef4444' }
+  ];
+
+  const bulkCollectionData = [
+    { name: 'Hotels', value: 12, color: '#8b5cf6' },
+    { name: 'Markets', value: 8, color: '#3b82f6' },
+    { name: 'Schools', value: 5, color: '#ec4899' }
+  ];
+
+  const customerDistribution = [
+    { name: 'Residential', value: 45, color: '#f97316' },
+    { name: 'Commercial', value: 30, color: '#fbbf24' },
+    { name: 'Industrial', value: 15, color: '#6366f1' },
+    { name: 'Institutional', value: 10, color: '#ec4899' }
+  ];
+
   return (
     <motion.div
       className="space-y-8 pb-8"
@@ -127,10 +154,37 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
       )}
 
       {/* Top Actions */}
-      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight font-display">Dashboard Overview</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Welcome back! Here's what's happening today.</p>
+      <motion.div variants={itemVariants} className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+        <div className="flex items-center gap-4">
+          <div className="p-4 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-gray-800 border border-indigo-100 dark:border-indigo-800 shadow-xl shadow-indigo-500/5 rounded-[1.5rem] relative group overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <LayoutDashboard size={28} className="text-indigo-600 dark:text-indigo-400 relative z-10" />
+          </div>
+
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tighter font-display leading-tight">
+                Dashboard Overview
+              </h2>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-emerald-100 dark:border-emerald-900/50 rounded-xl shadow-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em]">System Live</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 p-1">
+              <p className="text-sm font-bold text-gray-500 dark:text-gray-400 tracking-tight">
+                Welcome back, Administrator
+              </p>
+              <div className="flex items-center gap-2 text-xs font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50/50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-lg border border-indigo-100/50 dark:border-indigo-800/50">
+                <Clock size={12} />
+                {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="flex gap-3 w-full sm:w-auto">
@@ -157,7 +211,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <ColoredStatCard
             title="Waste Collected"
-            value="0 Ton"
+            value="42.5 Ton"
             icon={Recycle}
             color="bg-gradient-to-br from-blue-500 to-blue-700"
             delay={0.1}
@@ -172,14 +226,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
           />
           <ColoredStatCard
             title="Complaints"
-            value="0"
+            value="14"
             icon={AlertTriangle}
             color="bg-gradient-to-br from-rose-500 to-pink-600"
             delay={0.3}
           />
           <ColoredStatCard
             title="Revenue"
-            value="₹0"
+            value="₹2,45,800"
             icon={IndianRupee}
             color="bg-gradient-to-br from-violet-500 to-purple-700"
             delay={0.4}
@@ -198,19 +252,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
             <VehicleStatusWidget data={vehicleStats.widgetData} />
           </div>
           <div className="h-[300px]">
-            <UserChargeWidget />
+            <UserChargeWidget data={userChargeData} />
           </div>
           <div className="h-[300px]">
-            <ComplaintChart />
+            <ComplaintChart data={complaintData} />
           </div>
           <div className="h-[300px]">
-            <BulkCollectionChart />
+            <BulkCollectionChart data={bulkCollectionData} />
           </div>
           <div className="h-[300px]">
-            <POIWidget total={0} visited={0} />
+            <POIWidget total={1250} visited={845} />
           </div>
           <div className="h-[300px]">
-            <CustomerChart />
+            <CustomerChart data={customerDistribution} />
           </div>
         </div>
       </div>
@@ -224,14 +278,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <ColoredStatCard
             title="Fuel Usage"
-            value="0 Ltr"
+            value="840 Ltr"
             icon={Fuel}
             color="bg-gradient-to-br from-orange-400 to-red-500"
             delay={0.5}
           />
           <ColoredStatCard
             title="Attendance"
-            value="0/0"
+            value="156/160"
             icon={CalendarCheck}
             color="bg-gradient-to-br from-indigo-500 to-violet-700"
             delay={0.6}

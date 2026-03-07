@@ -7,7 +7,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import {
   CustomersPage, UserChargePage, FuelPage, WeighmentPage,
   BulkCollectionPage, LiveVehiclePage, AttendancePage,
-  ComplaintPage, AdminPage, KPIDashboardPage, RolesPage, CitizenPage, UserManagement, ProfilePage, SettingsPage
+  ComplaintPage, AdminPage, KPIDashboardPage, RolesPage, CitizenPage, UserManagement, ProfilePage, SettingsPage, POIMonitoringPage
 } from './components/Pages';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
@@ -78,7 +78,7 @@ function App() {
             <Route element={<Layout userId={user.uid} />}>
               {/* Smart redirect to user's first allowed module */}
               <Route path="/redirect" element={<SmartRedirect userId={user.uid} />} />
-              
+
               <Route path="/dashboard" element={
                 <ProtectedRoute userId={user?.uid || ''} requiredModule="Dashboard">
                   <Dashboard />
@@ -137,6 +137,11 @@ function App() {
               <Route path="/roles" element={
                 <ProtectedRoute userId={user?.uid || ''} requiredModule="Roles">
                   <RolesPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/poi-monitoring" element={
+                <ProtectedRoute userId={user?.uid || ''} requiredModule="POI Monitoring">
+                  <POIMonitoringPage />
                 </ProtectedRoute>
               } />
               <Route path="/user-management" element={
