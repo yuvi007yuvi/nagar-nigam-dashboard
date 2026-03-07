@@ -5,22 +5,37 @@ import PageHeader from '../shared/PageHeader';
 import { getAllUsersWithRoles, getAllUsers, assignRoleToUser, ROLES } from '../../services/userRoleService';
 
 const RoleAssignmentPage = () => {
-  const [users, setUsers] = useState<any[]>([
-    // Mock data for demonstration
-    { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'admin' },
-    { id: '2', name: 'Regular User', email: 'user@example.com', role: 'basic_user' }
-  ]);
-  const [allUsers, setAllUsers] = useState<any[]>([
-    // Mock data for demonstration
-    { id: '1', name: 'Admin User', email: 'admin@example.com' },
-    { id: '2', name: 'Regular User', email: 'user@example.com' },
-    { id: '3', name: 'New User', email: 'newuser@example.com' }
-  ]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedRole, setSelectedRole] = useState(ROLES.ADMIN);
   const [message, setMessage] = useState<{ type: string, text: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Fetch users and roles on mount
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const uResult = await getAllUsers();
+      if (uResult.success) {
+        setAllUsers(uResult.data || []);
+      }
+
+      const urResult = await getAllUsersWithRoles();
+      if (urResult.success) {
+        setUsers(urResult.data || []);
+      }
+    } catch (error: any) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Clear messages after 5 seconds
   useEffect(() => {
@@ -34,8 +49,8 @@ const RoleAssignmentPage = () => {
 
   // Filter users based on search term
   const filteredUsers = allUsers.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (user.name || user.displayName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Assign role to user
@@ -51,10 +66,8 @@ const RoleAssignmentPage = () => {
 
       if (result.success) {
         setMessage({ type: 'success', text: 'Role assigned successfully' });
-        // Update local state
-        setUsers(users.map(user =>
-          user.id === selectedUser ? { ...user, role: selectedRole } : user
-        ));
+        // Refresh data
+        await fetchData();
         // Reset form
         setSelectedUser('');
         setSelectedRole(ROLES.ADMIN);
@@ -96,7 +109,7 @@ const RoleAssignmentPage = () => {
                   <option value="">Choose a user</option>
                   {filteredUsers.map(user => (
                     <option key={user.id} value={user.id}>
-                      {user.name} ({user.email})
+                      {user.name || user.displayName || 'Unnamed User'} ({user.email})
                     </option>
                   ))}
                 </select>
@@ -173,10 +186,10 @@ const RoleAssignmentPage = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center text-white font-bold">
-                          {user.name.charAt(0)}
+                          {(user.name || user.displayName || '?').charAt(0)}
                         </div>
                         <div>
-                          <h4 className="font-semibold text-gray-800 dark:text-white">{user.name}</h4>
+                          <h4 className="font-semibold text-gray-800 dark:text-white">{user.name || user.displayName || 'Unnamed User'}</h4>
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{user.email}</p>
                         </div>
                       </div>

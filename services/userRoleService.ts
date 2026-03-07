@@ -271,3 +271,50 @@ export const assignDefaultRoleIfNeeded = async (userId: string) => {
     return { success: false, error: error.message };
   }
 };
+// Get all users from the database
+export const getAllUsers = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'users'));
+    const users: any[] = [];
+    querySnapshot.forEach((doc) => {
+      users.push({ id: doc.id, ...doc.data() });
+    });
+    return { success: true, data: users };
+  } catch (error: any) {
+    console.error('Error getting all users:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get all users along with their assigned roles
+export const getAllUsersWithRoles = async () => {
+  try {
+    // 1. Get all base users
+    const usersResult = await getAllUsers();
+    if (!usersResult.success) {
+      return usersResult;
+    }
+
+    // 2. Get all role assignments
+    const userRolesSnapshot = await getDocs(collection(db, USER_ROLES_COLLECTION));
+    const roleMap: Record<string, any> = {};
+    userRolesSnapshot.forEach((doc) => {
+      roleMap[doc.id] = doc.data();
+    });
+
+    // 3. Merge users with their roles
+    const usersWithRoles = usersResult.data.map((user: any) => {
+      const roleData = roleMap[user.id];
+      return {
+        ...user,
+        role: roleData ? roleData.role : ROLES.BASIC_USER, // Default to basic user
+        roleAssignedAt: roleData ? roleData.assignedAt : null
+      };
+    });
+
+    return { success: true, data: usersWithRoles };
+  } catch (error: any) {
+    console.error('Error getting users with roles:', error);
+    return { success: false, error: error.message };
+  }
+};
