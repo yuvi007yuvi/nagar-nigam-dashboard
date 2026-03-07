@@ -18,6 +18,7 @@ import {
     PeopleIllustration,
     BinIllustration
 } from '../Illustrations';
+import { useData } from '../../services/DataContext';
 import PageHeader from '../shared/PageHeader';
 
 interface NoDataViewProps {
@@ -43,12 +44,13 @@ const NoDataView = ({ message = "No records found", illustration: Illustration =
     </div>
 );
 
-// --- Weighment Page ---
 const WeighmentPage = () => {
+    const { weighments, loading } = useData();
+
     const weighStats = [
-        { label: 'Total Weight (Today)', value: '0.00 MT', icon: Scale, color: 'bg-emerald-500' },
-        { label: 'Total Trips', value: '0', icon: Truck, color: 'bg-blue-500' },
-        { label: 'Avg. Payload', value: '0.00 MT', icon: Layers, color: 'bg-amber-500' },
+        { label: 'Total Weight (Today)', value: `${(weighments.reduce((sum, e) => sum + (e.netWeight || 0), 0) / 1000).toFixed(2)} MT`, icon: Scale, color: 'bg-emerald-500' },
+        { label: 'Total Trips', value: weighments.length.toString(), icon: Truck, color: 'bg-blue-500' },
+        { label: 'Avg. Payload', value: `${(weighments.reduce((sum, e) => sum + (e.netWeight || 0), 0) / (weighments.length || 1) / 1000).toFixed(2)} MT`, icon: Layers, color: 'bg-amber-500' },
         { label: 'Rejected Loads', value: '0', icon: AlertTriangle, color: 'bg-red-500' },
     ];
 
@@ -148,11 +150,30 @@ const WeighmentPage = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {/* Empty Body */}
+                            {weighments.map((w, idx) => (
+                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-xs text-gray-600 dark:text-gray-300">
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{idx + 1}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200">TKT-{1050 + idx}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-black">{w.vehicleId}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">Ward 01</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">Nagar Nigam</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-bold">{w.grossWeight}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 text-gray-400 font-medium">{w.tareWeight}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 text-emerald-600 font-black">{w.netWeight}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 italic">{w.type || 'Solid Waste'}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">09:12 AM</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{w.time || '10:05 AM'}</td>
+                                    <td className="px-4 py-4">
+                                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-black uppercase tracking-tighter">Accepted</span>
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
-                <NoDataView message="No weighment transactions found" illustration={BinIllustration} />
+                {weighments.length === 0 && (
+                    <NoDataView message="No weighment transactions found" illustration={BinIllustration} />
+                )}
 
                 {/* Pagination */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-800">

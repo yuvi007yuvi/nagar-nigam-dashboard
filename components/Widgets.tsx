@@ -15,13 +15,14 @@ import {
 interface ColoredStatCardProps {
   title: string;
   value: string | number;
-  icon: React.ElementType;
+  icon?: React.ElementType;
+  image?: string;
   color: string;
   delay?: number;
   onClick?: () => void;
 }
 
-export const ColoredStatCard: React.FC<ColoredStatCardProps> = ({ title, value, icon: Icon, color, delay = 0, onClick }) => {
+export const ColoredStatCard: React.FC<ColoredStatCardProps> = ({ title, value, icon: Icon, image, color, delay = 0, onClick }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -29,12 +30,16 @@ export const ColoredStatCard: React.FC<ColoredStatCardProps> = ({ title, value, 
       transition={{ duration: 0.4, delay, type: "spring", stiffness: 100 }}
       whileHover={{ y: -5, scale: 1.02 }}
       onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-${color.split('-')[1]}-500/20 transition-all duration-300 text-white ${color} min-h-[160px] flex flex-col justify-between group ${onClick ? 'cursor-pointer' : ''} border border-white/40`}
+      className={`relative overflow-hidden rounded-2xl shadow-lg hover:shadow-xl hover:shadow-${color.split('-')[1]}-500/10 transition-all duration-300 text-white ${color} min-h-[130px] flex flex-col justify-between group ${onClick ? 'cursor-pointer' : ''} border border-white/40`}
     >
       <div className="p-5 relative z-10 flex flex-col h-full">
         <div className="flex justify-between items-start">
-          <div className="p-3 bg-white/20 rounded-xl backdrop-blur-md shadow-inner border border-white/20">
-            <Icon size={24} className="text-white drop-shadow-sm" />
+          <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md shadow-inner border border-white/20 overflow-hidden">
+            {image ? (
+              <img src={image} alt={title} className="w-8 h-8 object-contain drop-shadow-lg" />
+            ) : Icon ? (
+              <Icon size={24} className="text-white drop-shadow-sm" />
+            ) : null}
           </div>
         </div>
 
@@ -45,14 +50,18 @@ export const ColoredStatCard: React.FC<ColoredStatCardProps> = ({ title, value, 
       </div>
 
       {/* Footer Link */}
-      <div className="relative z-10 bg-black/10 px-5 py-3 flex items-center justify-between backdrop-blur-sm group-hover:bg-black/20 transition-colors border-t border-white/10">
-        <span className="text-xs font-medium tracking-wide uppercase opacity-90">View Details</span>
-        <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform opacity-90" />
+      <div className="relative z-10 bg-black/10 px-4 py-2 flex items-center justify-between backdrop-blur-sm group-hover:bg-black/20 transition-colors border-t border-white/10">
+        <span className="text-[10px] font-bold tracking-wider uppercase opacity-90">View Details</span>
+        <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform opacity-90" />
       </div>
 
       {/* Decorative Large Icon */}
       <div className="absolute -top-6 -right-6 text-white opacity-10 rotate-12 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-700 ease-out">
-        <Icon size={140} />
+        {image ? (
+          <img src={image} alt="" className="w-32 h-32 object-contain opacity-20" />
+        ) : Icon ? (
+          <Icon size={140} />
+        ) : null}
       </div>
 
       {/* Shine Effect */}
@@ -76,7 +85,7 @@ const WidgetContainer: React.FC<{ children: React.ReactNode; className?: string 
   <motion.div
     whileHover={{ y: -4, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
     transition={{ type: "spring", stiffness: 300, damping: 30 }}
-    className={`glass shadow-xl hover:shadow-2xl dark:bg-gray-800/50 dark:border-gray-700 rounded-2xl p-5 h-full flex flex-col relative overflow-hidden transition-all duration-300 border border-gray-100 dark:border-gray-700 ${className}`}
+    className={`glass shadow-lg hover:shadow-xl dark:bg-gray-800/50 dark:border-gray-700 rounded-2xl p-4 h-full flex flex-col relative overflow-hidden transition-all duration-300 border border-gray-100 dark:border-gray-700 ${className}`}
   >
     {children}
   </motion.div>
@@ -86,12 +95,12 @@ const WidgetContainer: React.FC<{ children: React.ReactNode; className?: string 
 export const UserChargeWidget: React.FC<{ data?: { label: string; value: string; color: string }[] }> = ({ data = [] }) => {
   return (
     <WidgetContainer>
-      <div className="flex items-center justify-between mb-6 relative z-10">
-        <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2 font-display">
-          <span className="w-1.5 h-5 bg-purple-500 rounded-full shadow-sm"></span>
-          User Charge Collection
+      <div className="flex items-center justify-between mb-4 relative z-10">
+        <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 flex items-center gap-2 uppercase tracking-widest">
+          <span className="w-1 h-3.5 bg-purple-500 rounded-full"></span>
+          Collection
         </h3>
-        <button className="text-xs text-purple-600 font-medium hover:bg-purple-50 px-2.5 py-1 rounded-lg transition-colors border border-transparent hover:border-purple-100">Details</button>
+        <button className="text-[10px] text-purple-600 font-bold hover:bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100 transition-colors">Details</button>
       </div>
 
       {data.length > 0 ? (
@@ -239,56 +248,81 @@ export const ComplaintChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
 };
 
 // --- Bulk Collection Chart ---
-export const BulkCollectionChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
+export const BulkCollectionChart: React.FC<{ data?: { segments: any[], binStatus: any[] } }> = ({ data }) => {
+  const segments = data?.segments || [];
+  const binStatus = data?.binStatus || [];
+
   return (
     <WidgetContainer>
-      <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-2 flex items-center gap-2 relative z-10 font-display">
-        <span className="w-1.5 h-5 bg-purple-500 rounded-full shadow-sm"></span>
-        Bulk Collection
-      </h3>
+      <div className="flex items-center justify-between mb-4 relative z-10">
+        <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2 font-display">
+          <span className="w-1.5 h-5 bg-blue-500 rounded-full shadow-sm"></span>
+          Bulk & Smart Bins
+        </h3>
+        <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-lg border border-blue-100/50 dark:border-blue-800/50 shadow-sm">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+          </span>
+          <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest leading-none">IoT Live</span>
+        </div>
+      </div>
 
-      {data.length > 0 ? (
-        <div className="flex-1 min-h-[150px] flex items-center relative z-10">
-          <div className="absolute top-0 right-0 opacity-10 pointer-events-none">
-            <BinIllustration className="w-40 h-40" />
+      <div className="flex flex-col gap-3 relative z-10">
+        {/* Top: Minimal Pie Chart */}
+        <div className="h-[105px] relative">
+          <div className="absolute inset-0 opacity-5 pointer-events-none flex items-center justify-center">
+            <BinIllustration className="w-24 h-24" />
           </div>
-          <ResponsiveContainer width="100%" height={160}>
+          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={data}
+                data={segments}
                 cx="50%"
                 cy="50%"
-                innerRadius={45}
-                outerRadius={65}
-                paddingAngle={3}
+                innerRadius={35}
+                outerRadius={48}
+                paddingAngle={4}
                 dataKey="value"
-                cornerRadius={6}
                 stroke="none"
               >
-                {data.map((entry, index) => (
+                {segments.map((entry: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)' }}
-                itemStyle={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}
-              />
-              <Legend
-                layout="vertical"
-                verticalAlign="middle"
-                align="right"
-                iconType="circle"
-                iconSize={8}
-                formatter={(value, entry: any) => (
-                  <span className="text-xs text-gray-600 dark:text-gray-300 ml-1 font-medium">{entry.payload.value} {value}</span>
-                )}
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '10px' }}
               />
             </PieChart>
           </ResponsiveContainer>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-xl font-black text-gray-800 dark:text-white leading-none">
+              {segments.reduce((a: any, b: any) => a + b.value, 0)}
+            </span>
+            <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Units</span>
+          </div>
         </div>
-      ) : (
-        <EmptyState illustration={BinIllustration} message="No bulk collection data" />
-      )}
+
+        {/* Bottom: Smart Bin Status */}
+        <div className="space-y-2.5 px-1">
+          {binStatus.map((bin, idx) => (
+            <div key={idx} className="space-y-1">
+              <div className="flex justify-between items-center text-[10px] font-bold">
+                <span className="text-gray-500 dark:text-gray-400 tracking-tight">{bin.location}</span>
+                <span className={`${bin.fill > 80 ? 'text-rose-500' : 'text-gray-700 dark:text-gray-200'}`}>{bin.fill}%</span>
+              </div>
+              <div className="h-2 w-full bg-gray-100 dark:bg-gray-700/50 rounded-full overflow-hidden shadow-inner">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${bin.fill}%` }}
+                  transition={{ duration: 1, delay: 0.5 + (idx * 0.1) }}
+                  className={`h-full ${bin.color} rounded-full shadow-sm`}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </WidgetContainer>
   );
 };

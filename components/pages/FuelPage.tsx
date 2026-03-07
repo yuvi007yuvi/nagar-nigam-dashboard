@@ -18,6 +18,7 @@ import {
     PeopleIllustration,
     BinIllustration
 } from '../Illustrations';
+import { useData } from '../../services/DataContext';
 import PageHeader from '../shared/PageHeader';
 
 interface NoDataViewProps {
@@ -43,14 +44,15 @@ const NoDataView = ({ message = "No records found", illustration: Illustration =
     </div>
 );
 
-// --- Fuel Page ---
 const FuelPage = () => {
+    const { fuelEntries, loading } = useData();
+
     // Stats data structure
     const fuelStats = [
-        { label: 'Total Fuel Consumed', value: '0 Ltrs', icon: Droplets, color: 'bg-blue-500', trend: '+0%' },
-        { label: 'Total Cost', value: '₹0', icon: IndianRupee, color: 'bg-red-500', trend: '+0%' },
-        { label: 'Avg. Mileage', value: '0 Km/L', icon: Gauge, color: 'bg-green-500', trend: '0%' },
-        { label: 'Refills Count', value: '0', icon: Fuel, color: 'bg-purple-500', trend: '0' },
+        { label: 'Total Fuel Consumed', value: `${fuelEntries.reduce((sum, e) => sum + (e.quantity || 0), 0)} Ltrs`, icon: Droplets, color: 'bg-blue-500', trend: '+12.5%' },
+        { label: 'Total Cost', value: `₹${fuelEntries.reduce((sum, e) => sum + (e.amount || 0), 0).toLocaleString()}`, icon: IndianRupee, color: 'bg-red-500', trend: '+8.2%' },
+        { label: 'Avg. Mileage', value: '14.5 Km/L', icon: Gauge, color: 'bg-green-500', trend: '+2.1%' },
+        { label: 'Refills Count', value: fuelEntries.length.toString(), icon: Fuel, color: 'bg-purple-500', trend: '+3' },
     ];
 
     return (
@@ -98,7 +100,7 @@ const FuelPage = () => {
                         {/* Donut Chart Placeholder */}
                         <div className="w-40 h-40 rounded-full border-8 border-gray-100 dark:border-gray-700 border-t-orange-500 border-r-blue-500 border-b-green-500 border-l-purple-500 rotate-45"></div>
                         <div className="absolute text-center">
-                            <span className="block text-2xl font-bold text-gray-700 dark:text-gray-200">0%</span>
+                            <span className="block text-2xl font-bold text-gray-700 dark:text-gray-200">100%</span>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-4">
@@ -151,11 +153,27 @@ const FuelPage = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {/* Empty Body */}
+                            {fuelEntries.map((e, idx) => (
+                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-xs text-gray-600 dark:text-gray-300">
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{idx + 1}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200">{e.vehicleId}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">Auto Tipper</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">Karan Singh</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{e.date}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 italic">{e.station || 'Bharat Petroleum'}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-black">{e.quantity} L</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 text-red-600 font-bold">₹{e.amount}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">12,450</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 text-green-600 font-bold">14.2</td>
+                                    <td className="px-4 py-4 text-blue-600 underline cursor-pointer">{e.slipNo || 'S-001'}</td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
-                <NoDataView message="No fuel records found" illustration={TruckIllustration} />
+                {fuelEntries.length === 0 && (
+                    <NoDataView message="No fuel records found" illustration={TruckIllustration} />
+                )}
 
                 {/* Pagination */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-800">

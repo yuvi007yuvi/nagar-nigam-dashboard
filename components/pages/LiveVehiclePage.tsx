@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useMemo, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import {
@@ -10,10 +10,15 @@ import {
     Home, Briefcase, Building2, Factory, Layers,
     IndianRupee, Gauge, Droplets, TrendingUp,
     Scale, Truck, WifiOff, PlayCircle, OctagonAlert, PauseCircle, StopCircle,
-    CalendarCheck, Edit, MessageSquare, RefreshCw
+    CalendarCheck, Edit, MessageSquare, RefreshCw, X
 } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
+import { getAuth } from 'firebase/auth';
 import { useVehicleData } from '../../services/vehicleService';
+import vehicleTopDown from '../images/top-down-vehicle.png';
+import vehicleStoppedTopDown from '../images/top-down-vehicle-stopped.png';
+import vehicleOfflineTopDown from '../images/top-down-vehicle-offline.png';
+import truckTopDown from '../images/top-down-truck.png';
 
 // Fix for default marker icon
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -28,34 +33,122 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Custom Truck Icon
-const truckIcon = new L.DivIcon({
-    className: 'custom-icon',
-    html: `<div style="background-color: #22c55e; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5"/><path d="M14 17h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
-  </div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
-});
+const getVehicleIcon = (speed: string | number, angle: string | number = 0, name: string = '', isOffline: boolean = false) => {
+    const s = typeof speed === 'string' ? parseInt(speed) : speed;
+    const a = typeof angle === 'string' ? parseInt(angle) : angle;
+    const isMoving = s > 0 && !isOffline;
+    const isTruck = name.toLowerCase().includes('compactor') || name.toLowerCase().includes('truck');
+
+    // Choose icon base
+    let iconUrl = isMoving ? vehicleTopDown : vehicleStoppedTopDown;
+    if (isOffline) iconUrl = vehicleOfflineTopDown;
+    if (isTruck && !isOffline) iconUrl = truckTopDown;
+
+    const color = isOffline ? '#ef4444' : (isMoving ? '#22c55e' : '#f59e0b');
+
+    return new L.DivIcon({
+        className: 'custom-vehicle-marker',
+        html: `
+          <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+            ${isMoving ? `<div style="position: absolute; width: 38px; height: 38px; border-radius: 50%; border: 3px solid ${color}; opacity: 0.5; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>` : ''}
+            <div style="transform: rotate(${a}deg); transition: transform 0.5s ease; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+              <img src="${iconUrl}" style="width: ${isTruck ? '40px' : '34px'}; height: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));" />
+            </div>
+          </div>
+        `,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+        popupAnchor: [0, -22]
+    });
+};
 
 // --- Live Vehicle Page ---
 const LiveVehiclePage = () => {
     const { vehicles, loading, error, refetch } = useVehicleData();
     const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+    const [generatingReport, setGeneratingReport] = useState<string | null>(null);
+    const [showReport, setShowReport] = useState(false);
+    const [reportData, setReportData] = useState<any[]>([]);
+    const [activeReport, setActiveReport] = useState<string>('');
+    const [reportFilters, setReportFilters] = useState({
+        zone: 'Zone A',
+        ward: 'Ward 01',
+        vehicle: 'All',
+        vType: 'All',
+        startDate: '2026-03-07',
+        endDate: '2026-03-07'
+    });
+
+    const [user, setUser] = useState<any>(null);
+    useEffect(() => {
+        const auth = getAuth();
+        if (auth.currentUser) {
+            setUser(auth.currentUser);
+        }
+    }, []);
+
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good Morning';
+        if (hour < 17) return 'Good Afternoon';
+        return 'Good Evening';
+    };
+
+    const userName = user?.displayName || user?.email?.split('@')[0] || 'Administrator';
+
+    const handleGenerateReport = (reportType: string) => {
+        setGeneratingReport(reportType);
+        setActiveReport(reportType);
+
+        setTimeout(() => {
+            setGeneratingReport(null);
+            setShowReport(true);
+
+            // Generate high-fidelity dummy data
+            if (reportType === 'POI Report' || reportType === 'Coverage Overview') {
+                setReportData([
+                    { sno: 1, zone: '1', ward: '35-Bankhandi', vehicle: 'M132 UP85AG0770', vtype: 'Primary - Auto Tipper', route: 'W35R1', total: 308, covered: 308, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '07:40 AM', outTime: '11:51 AM' },
+                    { sno: 2, zone: '1', ward: '65-Holi Gali', vehicle: 'M232 UP85ET 7839_C', vtype: 'Primary - Auto Tipper', route: 'W65R5', total: 142, covered: 142, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '08:38 AM', outTime: '10:14 AM' },
+                    { sno: 3, zone: '2', ward: '56-Mandi Ramdas', vehicle: 'MR032-70145651', vtype: 'Primary - Wheel Barrow', route: 'W56WBR3', total: 32, covered: 32, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '08:01 AM', outTime: '11:23 AM' },
+                    { sno: 4, zone: '2', ward: '56-Mandi Ramdas', vehicle: 'M268 UP85ET 7848', vtype: 'Primary - Auto Tipper', route: 'W56R4', total: 32, covered: 32, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '07:56 AM', outTime: '11:31 AM' },
+                    { sno: 5, zone: '2', ward: '30-Krishna Nagar Second', vehicle: 'M009 UP14PT7717', vtype: 'Primary - Auto Tipper', route: 'W30R1', total: 492, covered: 491, pending: 1, coverage: '99%', date: reportFilters.startDate, inTime: '08:10 AM', outTime: '12:21 PM' },
+                ]);
+            } else if (reportType === 'Trip Report') {
+                setReportData([
+                    { sno: 1, vehicle: 'UP85AG0770', driver: 'Rajesh Kumar', trips: 3, distance: '45.2 km', start: '07:40 AM', end: '11:51 AM', status: 'Completed', date: reportFilters.startDate },
+                    { sno: 2, vehicle: 'UP85ET 7839', driver: 'Amit Singh', trips: 2, distance: '28.5 km', start: '08:38 AM', end: '10:14 AM', status: 'Completed', date: reportFilters.startDate },
+                ]);
+            } else {
+                setReportData([
+                    { sno: 1, vehicle: 'UP85AG0770', zone: 'Zone 1', distance: '45.2 km', fuel: '8.5L', duration: '4h 11m', date: reportFilters.startDate },
+                    { sno: 2, vehicle: 'UP85ET 7839', zone: 'Zone 1', distance: '28.5 km', fuel: '5.2L', duration: '1h 36m', date: reportFilters.startDate },
+                ]);
+            }
+        }, 1500);
+    };
 
     // Calculate stats
     const stats = useMemo(() => {
+        const now = new Date();
         const total = vehicles.length;
-        const running = vehicles.filter(v => parseInt(v.speed) > 0).length;
-        const stopped = vehicles.filter(v => parseInt(v.speed) === 0).length;
-        // Assuming 'Data Not Receiving' or other statuses would require more logic or data fields
-        // For now, we'll just use basic speed-based logic
-        return { total, running, stopped };
+
+        const detailedVehicles = vehicles.map(v => {
+            const lastUpdate = new Date(v.dt_tracker);
+            const diffMinutes = (now.getTime() - lastUpdate.getTime()) / (1000 * 60);
+            const isOffline = diffMinutes > 10;
+            return { ...v, isOffline };
+        });
+
+        const running = detailedVehicles.filter(v => !v.isOffline && parseInt(v.speed) > 0).length;
+        const stopped = detailedVehicles.filter(v => !v.isOffline && parseInt(v.speed) === 0).length;
+        const offline = detailedVehicles.filter(v => v.isOffline).length;
+
+        return { total, running, stopped, offline, detailedVehicles };
     }, [vehicles]);
 
     const coverageStats = [
         { label: 'Total', value: stats.total.toString(), icon: Layers, color: 'text-purple-600 bg-purple-100', sub: 'View More' },
-        { label: 'Data Not Receiving', value: '0', icon: WifiOff, color: 'text-orange-500 bg-orange-100', sub: 'View More' },
+        { label: 'Data Not Receiving', value: stats.offline.toString(), icon: WifiOff, color: 'text-orange-500 bg-orange-100', sub: 'View More' },
         { label: 'Running', value: stats.running.toString(), icon: PlayCircle, color: 'text-green-500 bg-green-100', sub: 'View More' },
         { label: 'Over Speeding', value: '0', icon: OctagonAlert, color: 'text-red-500 bg-red-100', sub: 'View More' },
         { label: 'Standing', value: '0', icon: PauseCircle, color: 'text-pink-500 bg-pink-100', sub: 'View More' },
@@ -89,7 +182,12 @@ const LiveVehiclePage = () => {
     return (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 p-2">
             <div className="flex justify-between items-start">
-                <PageHeader title="Live Vehicle" description="Live vehicle tracking and route coverage analysis." />
+                <div>
+                    <PageHeader title="Live Vehicle" description="Live vehicle tracking and route coverage analysis." />
+                    <p className="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mt-1">
+                        Welcome {userName}, {getGreeting()}!
+                    </p>
+                </div>
                 <button
                     onClick={refetch}
                     className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 shadow-sm transition-all"
@@ -111,9 +209,24 @@ const LiveVehiclePage = () => {
                 <h3 className="text-sm font-bold text-gray-600">Reports</h3>
                 <div className="flex flex-wrap gap-3">
                     {['Trip Report', 'POI Report', 'Coverage Overview', 'Distance Report'].map((report) => (
-                        <button key={report} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-cyan-100 dark:border-cyan-900/30 text-cyan-700 dark:text-cyan-400 rounded-lg shadow-sm hover:bg-cyan-50 dark:hover:bg-cyan-900/20 hover:shadow text-xs font-bold transition-all">
-                            <div className="p-1 bg-cyan-100 dark:bg-cyan-900/50 rounded text-cyan-600 dark:text-cyan-400"><FileText size={14} /></div>
+                        <button
+                            key={report}
+                            onClick={() => handleGenerateReport(report)}
+                            disabled={generatingReport !== null}
+                            className={`flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-cyan-100 dark:border-cyan-900/30 text-cyan-700 dark:text-cyan-400 rounded-lg shadow-sm hover:bg-cyan-50 dark:hover:bg-cyan-900/20 hover:shadow text-xs font-bold transition-all relative overflow-hidden ${generatingReport === report ? 'opacity-70 cursor-wait' : ''}`}
+                        >
+                            <div className="p-1 bg-cyan-100 dark:bg-cyan-900/50 rounded text-cyan-600 dark:text-cyan-400">
+                                {generatingReport === report ? <RefreshCw size={14} className="animate-spin" /> : <FileText size={14} />}
+                            </div>
                             {report}
+                            {generatingReport === report && (
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: '100%' }}
+                                    transition={{ duration: 1.5 }}
+                                    className="absolute bottom-0 left-0 h-0.5 bg-cyan-500 opacity-30"
+                                />
+                            )}
                         </button>
                     ))}
                 </div>
@@ -173,18 +286,21 @@ const LiveVehiclePage = () => {
                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
-                        {vehicles.map((vehicle, idx) => (
+                        {stats.detailedVehicles.map((vehicle, idx) => (
                             <Marker
                                 key={`${vehicle.imei}-${idx}`}
                                 position={[parseFloat(vehicle.lat), parseFloat(vehicle.lng)]}
-                                icon={truckIcon}
+                                icon={getVehicleIcon(vehicle.speed, vehicle.angle, vehicle.name, vehicle.isOffline)}
                                 eventHandlers={{
                                     click: () => setSelectedVehicle(vehicle.imei),
                                 }}
                             >
                                 <Popup>
                                     <div className="p-1">
-                                        <h3 className="font-bold text-sm mb-1">{vehicle.name}</h3>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-bold text-sm">{vehicle.name}</h3>
+                                            {vehicle.isOffline && <span className="text-[8px] font-black bg-red-100 text-red-600 px-1 rounded">OFFLINE</span>}
+                                        </div>
                                         <div className="text-xs space-y-1">
                                             <p><span className="text-gray-500">Speed:</span> {vehicle.speed} km/h</p>
                                             <p><span className="text-gray-500">Last Update:</span> {vehicle.dt_tracker}</p>
@@ -203,6 +319,177 @@ const LiveVehiclePage = () => {
                     </div>
                 </div>
             </div>
+            {/* Report Modal - Matches Reference Screenshot */}
+            <AnimatePresence>
+                {showReport && (
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-hidden">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                            className="bg-white dark:bg-gray-800 w-full max-w-[98%] max-h-[96vh] rounded-xl shadow-2xl flex flex-col overflow-hidden"
+                        >
+                            {/* Modal Header */}
+                            <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+                                <h2 className="text-lg font-bold text-gray-800 dark:text-white">
+                                    {activeReport} - Todays Date
+                                </h2>
+                                <button
+                                    onClick={() => setShowReport(false)}
+                                    className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                {/* Stats Summary Row */}
+                                <div className="flex flex-wrap items-center justify-between gap-4 text-sm font-bold text-gray-600 dark:text-gray-300 px-2">
+                                    <div className="flex gap-6">
+                                        <span>Total Rows : <span className="text-gray-900 dark:text-white">166</span></span>
+                                        <span>Total Unique Route Count : <span className="text-gray-900 dark:text-white">166</span></span>
+                                        <span>Covered Count : <span className="text-emerald-600">76,514</span></span>
+                                    </div>
+
+                                    {/* Legend */}
+                                    <div className="flex items-center gap-4 text-[10px] uppercase tracking-wider">
+                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-red-500 rounded-sm"></div> 0-30%</div>
+                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-gray-400 rounded-sm"></div> 31-60%</div>
+                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-blue-600 rounded-sm"></div> 61-80%</div>
+                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div> 81-100%</div>
+                                    </div>
+                                </div>
+
+                                {/* Filter Controls Row */}
+                                <div className="flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
+                                    <select
+                                        value={reportFilters.zone}
+                                        onChange={(e) => setReportFilters({ ...reportFilters, zone: e.target.value })}
+                                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-32"
+                                    >
+                                        <option>Zone A</option>
+                                        <option>Zone B</option>
+                                        <option>Zone C</option>
+                                    </select>
+                                    <select
+                                        value={reportFilters.ward}
+                                        onChange={(e) => setReportFilters({ ...reportFilters, ward: e.target.value })}
+                                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-32"
+                                    >
+                                        <option>Ward 01</option>
+                                        <option>Ward 02</option>
+                                        <option>Ward 03</option>
+                                    </select>
+                                    <select
+                                        value={reportFilters.vehicle}
+                                        onChange={(e) => setReportFilters({ ...reportFilters, vehicle: e.target.value })}
+                                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-40"
+                                    >
+                                        <option value="All">All Vehicles</option>
+                                        {vehicles.map(v => (
+                                            <option key={v.id}>{v.registrationNumber}</option>
+                                        ))}
+                                    </select>
+                                    <select
+                                        value={reportFilters.vType}
+                                        onChange={(e) => setReportFilters({ ...reportFilters, vType: e.target.value })}
+                                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-48"
+                                    >
+                                        <option value="All">All types</option>
+                                        <option>Auto Tipper</option>
+                                        <option>Wheel Barrow</option>
+                                    </select>
+                                    <div className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500">
+                                        <Calendar size={14} />
+                                        <input
+                                            type="date"
+                                            value={reportFilters.startDate}
+                                            onChange={(e) => setReportFilters({ ...reportFilters, startDate: e.target.value })}
+                                            className="bg-transparent outline-none w-24 ml-1"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500">
+                                        <Calendar size={14} />
+                                        <input
+                                            type="date"
+                                            value={reportFilters.endDate}
+                                            onChange={(e) => setReportFilters({ ...reportFilters, endDate: e.target.value })}
+                                            className="bg-transparent outline-none w-24 ml-1"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={() => handleGenerateReport(activeReport)}
+                                        className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500 text-white text-xs font-black rounded hover:bg-emerald-600 transition-all ml-auto"
+                                    >
+                                        <Search size={14} /> Search All
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const csvContent = "data:text/csv;charset=utf-8," +
+                                                reportData.map(r => Object.values(r).join(",")).join("\n");
+                                            const encodedUri = encodeURI(csvContent);
+                                            const link = document.createElement("a");
+                                            link.setAttribute("href", encodedUri);
+                                            link.setAttribute("download", `${activeReport.toLowerCase().replace(/ /g, '_')}.csv`);
+                                            document.body.appendChild(link);
+                                            link.click();
+                                        }}
+                                        className="px-4 py-1.5 bg-gray-900 text-white text-xs font-black rounded hover:bg-black transition-all"
+                                    >
+                                        Export
+                                    </button>
+                                </div>
+
+                                {/* Main Data Table */}
+                                <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
+                                    <table className="w-full text-left border-collapse min-w-[1200px]">
+                                        <thead>
+                                            <tr className="bg-emerald-500 text-white font-black text-[10px] uppercase tracking-widest">
+                                                {reportData.length > 0 && Object.keys(reportData[0]).map((key) => (
+                                                    <th key={key} className="px-4 py-3 border-r border-emerald-400/30">
+                                                        {key === 'sno' ? 'S.No' :
+                                                            key === 'vtype' ? 'Vehicle Type' :
+                                                                key === 'inTime' ? 'In Time' :
+                                                                    key === 'outTime' ? 'Out Time' :
+                                                                        key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
+                                                    </th>
+                                                ))}
+                                                <th className="px-4 py-3 text-center">Trip Playback</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
+                                            {reportData.map((row, idx) => (
+                                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                                                    {Object.entries(row).map(([key, value]: [string, any], i) => (
+                                                        <td key={i} className={`px-4 py-4 border-r dark:border-gray-700 ${key === 'ward' ? 'text-blue-600 dark:text-blue-400' : ''} ${key === 'coverage' ? 'font-black text-emerald-600' : ''}`}>
+                                                            {value}
+                                                        </td>
+                                                    ))}
+                                                    <td className="px-4 py-4 text-center">
+                                                        <button className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-all">
+                                                            <div className="w-3 h-3 flex items-center justify-center">▶</div>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+                                <button
+                                    onClick={() => setShowReport(false)}
+                                    className="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-black rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+                                >
+                                    Close Report
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }

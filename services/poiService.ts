@@ -10,7 +10,7 @@ export interface POI {
     ownerName: string;
     houseNumber: string;
     status: 'covered' | 'pending';
-    lastCovered?: Timestamp;
+    lastCovered?: any; // Changed from Timestamp to any to avoid strict type issues in mock
     vehicleId?: string;
 }
 
@@ -18,7 +18,7 @@ export const getPOIs = async (ward?: string, zone?: string) => {
     try {
         const mockPOIs: POI[] = [];
 
-        // Ward 01 - Bhaktivedanta Swami Marg Area (Real on-road alignment)
+        // Ward 35 - Bankhandi Area
         const w01RoadNodes = [
             [27.5002, 77.6698], [27.5015, 77.6712], [27.5028, 77.6725], [27.5042, 77.6738], [27.5055, 77.6752], [27.5068, 77.6765]
         ];
@@ -26,47 +26,47 @@ export const getPOIs = async (ward?: string, zone?: string) => {
             for (let j = 0; j < 10; j++) {
                 const id = i * 10 + j + 1;
                 mockPOIs.push({
-                    id: `w01-h${id}`,
+                    id: `w35-h${id}`,
                     lat: node[0] + (Math.random() * 0.0005) - 0.00025,
                     lng: node[1] + (Math.random() * 0.0005) - 0.00025,
-                    address: `House No. ${id}, Bhaktivedanta Swami Marg, Vrindavan`,
-                    ward: 'Ward 01',
+                    address: `House No. ${id}, Bankhandi Area, Vrindavan`,
+                    ward: '35-Bankhandi',
                     ownerName: `Owner ${id}`, houseNumber: `H-${100 + id}`,
                     status: id > 45 ? 'pending' : 'covered',
                     lastCovered: id <= 45 ? Timestamp.now() : undefined,
-                    vehicleId: 'TIPPER-001'
+                    vehicleId: 'UP85AG0770'
                 });
             }
         });
 
-        // Ward 02 - Raman Reti Road alignment
+        // Ward 65 - Holi Gali
         const w02RoadNodes = [[27.4975, 77.6642], [27.4985, 77.6660], [27.4995, 77.6680]];
         w02RoadNodes.forEach((node, i) => {
             for (let j = 0; j < 5; j++) {
                 const id = i * 5 + j + 1;
                 mockPOIs.push({
-                    id: `w02-h${id}`,
+                    id: `w65-h${id}`,
                     lat: node[0] + (Math.random() * 0.0003),
                     lng: node[1] + (Math.random() * 0.0003),
-                    address: `Building ${id}, Raman Reti, Vrindavan`, ward: 'Ward 02',
+                    address: `Building ${id}, Holi Gali, Mathura`, ward: '65-Holi Gali',
                     ownerName: `Customer ${id}`, houseNumber: `R-${id}`, status: 'covered',
-                    lastCovered: Timestamp.now(), vehicleId: 'TIPPER-002'
+                    lastCovered: Timestamp.now(), vehicleId: 'UP85ET 7839'
                 });
             }
         });
 
-        // Ward 03 - Parikrama Marg alignment
+        // Ward 56 - Mandi Ramdas
         [[27.5050, 77.6800], [27.5065, 77.6820]].forEach((node, i) => {
             mockPOIs.push({
-                id: `w03-h${i}`, lat: node[0] + 0.0001, lng: node[1] + 0.0001,
-                address: `Parikrama Marg House ${i}`, ward: 'Ward 03',
+                id: `w56-h${i}`, lat: node[0] + 0.0001, lng: node[1] + 0.0001,
+                address: `Mandi Ramdas Street House ${i}`, ward: '56-Mandi Ramdas',
                 ownerName: `Owner ${i}`, houseNumber: `P-${i}`, status: 'pending'
             });
         });
 
-        // Wards 04 & 05
-        mockPOIs.push({ id: 'w04-1', lat: 27.4850, lng: 77.6600, address: 'Prem Mandir Area', ward: 'Ward 04', ownerName: 'Vikas', houseNumber: 'PM-1', status: 'covered', vehicleId: 'TIPPER-004' });
-        mockPOIs.push({ id: 'w05-1', lat: 27.4750, lng: 77.6500, address: 'Mathura Road', ward: 'Ward 05', ownerName: 'Suresh', houseNumber: 'MR-1', status: 'pending' });
+        // Ward 30 - Krishna Nagar
+        mockPOIs.push({ id: 'w30-1', lat: 27.4850, lng: 77.6600, address: 'Krishna Nagar Sector 1', ward: '30-Krishna Nagar', ownerName: 'Vikas', houseNumber: 'KN-1', status: 'covered', vehicleId: 'UP14PT7717' });
+        mockPOIs.push({ id: 'w05-1', lat: 27.4750, lng: 77.6500, address: 'Mathura Cantonment', ward: 'Ward 05', ownerName: 'Suresh', houseNumber: 'MC-1', status: 'pending' });
 
         let filteredPOIs = mockPOIs;
         if (ward && ward !== 'All') {
@@ -82,24 +82,20 @@ export const getPOIs = async (ward?: string, zone?: string) => {
 
 export const getRouteData = async (ward?: string, routeId?: string) => {
     const routes: Record<string, any> = {
-        'Ward 01': {
-            'W01R1': {
+        '35-Bankhandi': {
+            'W35R1': {
                 plannedRoute: [[27.5002, 77.6698], [27.5015, 77.6712], [27.5028, 77.6725], [27.5042, 77.6738], [27.5055, 77.6752], [27.5068, 77.6765]],
                 gpsHistory: [[27.5002, 77.6698], [27.5015, 77.6712], [27.5028, 77.6725]]
-            },
-            'W01R2': {
-                plannedRoute: [[27.5000, 77.6690], [27.5010, 77.6700], [27.5020, 77.6710]],
-                gpsHistory: [[27.5000, 77.6690]]
             }
         },
-        'Ward 02': {
-            'W02R1': {
+        '65-Holi Gali': {
+            'W65R1': {
                 plannedRoute: [[27.4975, 77.6642], [27.4982, 77.6655], [27.4988, 77.6668], [27.4995, 77.6680]],
                 gpsHistory: [[27.4975, 77.6642], [27.4982, 77.6655]]
             }
         },
-        'Ward 03': {
-            'W03R1': {
+        '56-Mandi Ramdas': {
+            'W56R1': {
                 plannedRoute: [[27.5045, 77.6795], [27.5052, 77.6805], [27.5058, 77.6815]],
                 gpsHistory: [[27.5045, 77.6795]]
             }
@@ -112,10 +108,10 @@ export const getRouteData = async (ward?: string, routeId?: string) => {
 
 export const getWardRoutes = async (ward?: string) => {
     const wardRoutesMap: Record<string, string[]> = {
-        'Ward 01': ['W01R1', 'W01R2', 'W01R3'],
-        'Ward 02': ['W02R1', 'W02R2'],
-        'Ward 03': ['W03R1'],
-        'Ward 04': ['W04R1'],
+        '35-Bankhandi': ['W35R1', 'W35R2'],
+        '65-Holi Gali': ['W65R1', 'W65R2'],
+        '56-Mandi Ramdas': ['W56R1'],
+        '30-Krishna Nagar': ['W30R1'],
         'Ward 05': ['W05R1']
     };
 
@@ -124,18 +120,12 @@ export const getWardRoutes = async (ward?: string) => {
 };
 
 export const getWardRoads = async (ward?: string) => {
-    // Mock road network for Vrindavan wards
     const roadNetwork: Record<string, any> = {
-        'Ward 01': [
-            // Major Road (Bhaktivedanta Swami Marg)
+        '35-Bankhandi': [
             [[27.5000, 77.6690], [27.5020, 77.6715], [27.5040, 77.6740], [27.5060, 77.6760]],
-            // Secondary Road 1
-            [[27.5010, 77.6700], [27.5015, 77.6720], [27.5020, 77.6745]],
-            // Parallel Alley
-            [[27.5005, 77.6695], [27.5025, 77.6720]]
+            [[27.5010, 77.6700], [27.5015, 77.6720], [27.5020, 77.6745]]
         ],
-        'Ward 02': [
-            // Raman Reti Road network
+        '65-Holi Gali': [
             [[27.4970, 77.6630], [27.4985, 77.6660], [27.5000, 77.6685]],
             [[27.4980, 77.6650], [27.4975, 77.6670]]
         ]
@@ -146,7 +136,6 @@ export const getWardRoads = async (ward?: string) => {
 };
 
 export const getCoverageStats = async (date: Date = new Date()) => {
-    // Return summary stats
     return {
         success: true,
         data: {

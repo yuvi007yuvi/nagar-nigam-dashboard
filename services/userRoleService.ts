@@ -113,6 +113,19 @@ export const getAllRoles = async () => {
       roles.push(doc.data() as Role);
     });
 
+    if (roles.length === 0) {
+      // Return default mock roles
+      return {
+        success: true,
+        data: [
+          { id: 'admin', name: 'Administrator', modules: ALL_MODULES, description: 'Full access' },
+          { id: 'supervisor', name: 'Supervisor', modules: ['Dashboard', 'Live Vehicle', 'Attendance', 'Bulk Collection'], description: 'Field supervisor' },
+          { id: 'collector', name: 'Collector', modules: ['Dashboard', 'User Charge'], description: 'Revenue collector' },
+          { id: 'citizen', name: 'Citizen', modules: ['Dashboard', 'Complaint', 'POI Monitoring'], description: 'End user' },
+        ]
+      };
+    }
+
     return { success: true, data: roles };
   } catch (error: any) {
     console.error('Error getting all roles:', error);

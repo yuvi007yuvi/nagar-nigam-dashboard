@@ -67,45 +67,45 @@ const KPIDashboardPage = () => {
         {
             title: "Customer Engagement & Transactions",
             cards: [
-                { title: "KYC Completion", value: 0, color: "#e5e7eb" },
-                { title: "User Charge Collection", value: 0, color: "#e5e7eb" },
-                { title: "Receipt Generation", value: 0, color: "#e5e7eb" }
+                { title: "KYC Completion", value: 87, color: "#10b981" },
+                { title: "User Charge Collection", value: 72, color: "#f59e0b" },
+                { title: "Receipt Generation", value: 95, color: "#3b82f6" }
             ]
         },
         {
             title: "Fleet & Fuel Operations",
             cards: [
-                { title: "Fuel Refill", value: 0, color: "#e5e7eb" },
-                { title: "Trip Completion", value: 0, color: "#e5e7eb" },
-                { title: "On-Time Vehicle Dispatch", value: "NA", type: "text" },
-                { title: "Vehicle Breakdown", value: "NA", type: "text" },
-                { title: "GPS Connectivity", value: 0, color: "#e5e7eb" }
+                { title: "Fuel Refill", value: 91, color: "#8b5cf6" },
+                { title: "Trip Completion", value: 88, color: "#10b981" },
+                { title: "On-Time Vehicle Dispatch", value: "94%", type: "text" },
+                { title: "Vehicle Breakdown", value: "2", type: "text" },
+                { title: "GPS Connectivity", value: 97, color: "#06b6d4" }
             ]
         },
         {
             title: "Waste Collection & Coverage",
             cards: [
-                { title: "Waste Collection", value: 0, color: "#e5e7eb" },
-                { title: "Bulk Collection Scan", value: 0, color: "#e5e7eb" },
-                { title: "Pol Coverage", value: 0, color: "#e5e7eb" },
-                { title: "Distance Coverage", value: 0, color: "#e5e7eb" }
+                { title: "Waste Collection", value: 84, color: "#059669" },
+                { title: "Bulk Collection Scan", value: 79, color: "#f59e0b" },
+                { title: "Pol Coverage", value: 92, color: "#3b82f6" },
+                { title: "Distance Coverage", value: 86, color: "#8b5cf6" }
             ]
         },
         {
             title: "Workforce Performance & Attendance",
             cards: [
-                { title: "Workforce Attendance", value: 0, color: "#e5e7eb" },
-                { title: "UCC Supervisor Attendance", value: 0, color: "#e5e7eb" },
-                { title: "C&T Supervisor Attendance", value: 0, color: "#e5e7eb" },
-                { title: "Uniform Compliance", value: "NA", type: "text" }
+                { title: "Workforce Attendance", value: 93, color: "#10b981" },
+                { title: "UCC Supervisor Attendance", value: 96, color: "#3b82f6" },
+                { title: "C&T Supervisor Attendance", value: 94, color: "#8b5cf6" },
+                { title: "Uniform Compliance", value: "98%", type: "text" }
             ]
         },
         {
             title: "Customer Service & Compilance",
             cards: [
-                { title: "Complaint Resolution", value: 0, color: "#e5e7eb" },
-                { title: "IEC Campaign Execution", value: "NA", type: "text" },
-                { title: "Waste Segregation Compliance", value: "NA", type: "text" }
+                { title: "Complaint Resolution", value: 89, color: "#10b981" },
+                { title: "IEC Campaign Execution", value: "Active", type: "text" },
+                { title: "Waste Segregation Compliance", value: "76%", type: "text" }
             ]
         }
     ];

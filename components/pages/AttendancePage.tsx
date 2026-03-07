@@ -49,25 +49,25 @@ const AttendancePage = () => {
     const attendanceStats = [
         {
             title: 'Today',
-            data: [{ label: 'Present', val: '0/0' }, { label: 'Absent', val: '0/0' }, { label: 'Missed Punch', val: '0' }],
+            data: [{ label: 'Present', val: '142/150' }, { label: 'Absent', val: '5/150' }, { label: 'Missed Punch', val: '3' }],
             icon: CalendarCheck,
             color: 'text-purple-600 bg-purple-100'
         },
         {
             title: 'Yesterday',
-            data: [{ label: 'Present', val: '0/0' }, { label: 'Absent', val: '0/0' }, { label: 'Missed Punch', val: '0' }],
+            data: [{ label: 'Present', val: '138/150' }, { label: 'Absent', val: '8/150' }, { label: 'Missed Punch', val: '4' }],
             icon: Clock,
             color: 'text-pink-500 bg-pink-100'
         },
         {
             title: 'Till Month',
-            data: [{ label: 'Present', val: '0%' }, { label: 'Absent', val: '0%' }, { label: 'Missed Punch', val: '0' }],
+            data: [{ label: 'Present', val: '94.2%' }, { label: 'Absent', val: '3.8%' }, { label: 'Missed Punch', val: '12' }],
             icon: Calendar,
             color: 'text-green-600 bg-green-100'
         },
         {
             title: 'Previous Month',
-            data: [{ label: 'Present', val: '0%' }, { label: 'Absent', val: '0%' }, { label: 'Missed Punch', val: '0' }],
+            data: [{ label: 'Present', val: '92.5%' }, { label: 'Absent', val: '4.2%' }, { label: 'Missed Punch', val: '15' }],
             icon: Calendar,
             color: 'text-blue-600 bg-blue-100'
         },
@@ -95,8 +95,14 @@ const AttendancePage = () => {
         </div>
     );
 
-    // Empty data for Table (removing mock data)
-    const staffData = [];
+    // Mock data for Table
+    const staffData = [
+        { id: '1', name: 'Rajesh Kumar', empId: 'EMP001', present: 22, absent: 2, missed: 1, statusPattern: 'PPPPAPPPPPMP', img: '' },
+        { id: '2', name: 'Suresh Singh', empId: 'EMP002', present: 20, absent: 4, missed: 0, statusPattern: 'PPPPAAPPPPAA', img: '' },
+        { id: '3', name: 'Amit Yadav', empId: 'EMP003', present: 24, absent: 0, missed: 1, statusPattern: 'PPPPPPPPPPPP', img: '' },
+        { id: '4', name: 'Priya Sharma', empId: 'EMP004', present: 18, absent: 6, missed: 1, statusPattern: 'AAAPPPPAAAPP', img: '' },
+        { id: '5', name: 'Vikram Mehta', empId: 'EMP005', present: 21, absent: 3, missed: 1, statusPattern: 'PMPPPPMMPPPP', img: '' },
+    ];
 
     // Helper to generate status grid
     const getStatusForDay = (pattern: string, day: number) => {

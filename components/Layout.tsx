@@ -10,6 +10,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ userId }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(true); // Default to mini sidebar
     const location = useLocation();
 
     // Determine title based on current path
@@ -42,6 +43,8 @@ const Layout: React.FC<LayoutProps> = ({ userId }) => {
 
             <Sidebar
                 isOpen={isSidebarOpen}
+                isCollapsed={isCollapsed}
+                setIsCollapsed={setIsCollapsed}
                 onClose={() => setIsSidebarOpen(false)}
                 userId={userId}
             />
@@ -60,7 +63,7 @@ const Layout: React.FC<LayoutProps> = ({ userId }) => {
             </AnimatePresence>
 
             {/* Main Content Area */}
-            <div className="ml-0 lg:ml-72 transition-all duration-300 min-h-screen flex flex-col">
+            <div className={`ml-0 ${isCollapsed ? 'lg:ml-20' : 'lg:ml-72'} transition-all duration-300 min-h-screen flex flex-col`}>
                 <Header
                     onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
                     title={getPageTitle()}

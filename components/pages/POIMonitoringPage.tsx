@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import {
-    Search, Filter, Download as DownloadIcon, MapPin,
-    CheckCircle, Clock, Home, Truck, Layers,
-    TrendingUp, Map as MapIcon, Calendar, ArrowRight,
-    Search as SearchIcon, RefreshCw, Smartphone, List, PieChart,
-    User, FileText, Activity, Map as MapIcon2, Navigation,
-    Target, Zap
+    Search, Filter, MapPin, CheckCircle, TrendingUp, Truck, Mail, Phone,
+    User, Calendar, Clock, Download as DownloadIcon, RefreshCw, Layers,
+    ChevronDown, ChevronRight, MoreHorizontal, FileText, ArrowRight,
+    Target, Activity, Navigation, Smartphone, X, Search as SearchIcon,
+    Map as MapIcon, List, PieChart
 } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
+import { getAuth } from 'firebase/auth';
 import { getPOIs, getCoverageStats, POI, getRouteData, getWardRoads, getWardRoutes } from '../../services/poiService';
 import { NoDataView } from '../Pages';
 
@@ -29,10 +29,10 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const getPinIcon = (color: string) => {
     const svg = `
-        <svg width="20" height="28" viewBox="0 0 30 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    < svg width = "20" height = "28" viewBox = "0 0 30 40" fill = "none" xmlns = "http://www.w3.org/2000/svg" >
             <path d="M15 0C6.71573 0 0 6.71573 0 15C0 26.25 15 40 15 40C15 40 30 26.25 30 15C30 6.71573 23.2843 0 15 0Z" fill="${color}" stroke="black" stroke-width="2"/>
             <circle cx="15" cy="15" r="5" fill="black"/>
-        </svg>
+        </svg >
     `;
     return L.divIcon({
         html: svg,
@@ -83,6 +83,65 @@ const POIMonitoringPage = () => {
     const [selectedZone, setSelectedZone] = useState('All');
     const [selectedRoute, setSelectedRoute] = useState('All');
     const [availableRoutes, setAvailableRoutes] = useState<string[]>([]);
+    const [generatingReport, setGeneratingReport] = useState<string | null>(null);
+    const [showReport, setShowReport] = useState(false);
+    const [reportData, setReportData] = useState<any[]>([]);
+    const [activeReport, setActiveReport] = useState<string>('');
+    const [userName, setUserName] = useState('Administrator');
+    const [reportFilters, setReportFilters] = useState({
+        zone: 'Zone A',
+        ward: '35-Bankhandi',
+        vehicle: 'All',
+        vType: 'All',
+        startDate: '2026-03-07',
+        endDate: '2026-03-07'
+    });
+
+    useEffect(() => {
+        const auth = getAuth();
+        if (auth.currentUser) {
+            // setUser(auth.currentUser); // This line was removed as `user` state is not defined in the provided snippet
+            setUserName(auth.currentUser.displayName || auth.currentUser.email?.split('@')[0] || 'Administrator');
+        }
+    }, []);
+
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good Morning';
+        if (hour < 17) return 'Good Afternoon';
+        return 'Good Evening';
+    };
+
+    const handleGenerateReport = (reportType: string) => {
+        setGeneratingReport(reportType);
+        setActiveReport(reportType);
+
+        setTimeout(() => {
+            setGeneratingReport(null);
+            setShowReport(true);
+
+            // Generate dummy data based on report type
+            if (reportType === 'POI Report' || reportType === 'Coverage Overview') {
+                setReportData([
+                    { sno: 1, zone: '1', ward: '35-Bankhandi', vehicle: 'M132 UP85AG0770', vtype: 'Primary - Auto Tipper', route: 'W35R1', total: 308, covered: 308, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '07:40 AM', outTime: '11:51 AM' },
+                    { sno: 2, zone: '1', ward: '65-Holi Gali', vehicle: 'M232 UP85ET 7839_C', vtype: 'Primary - Auto Tipper', route: 'W65R5', total: 142, covered: 142, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '08:38 AM', outTime: '10:14 AM' },
+                    { sno: 3, zone: '2', ward: '56-Mandi Ramdas', vehicle: 'MR032-70145651', vtype: 'Primary - Wheel Barrow', route: 'W56WBR3', total: 32, covered: 32, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '08:01 AM', outTime: '11:23 AM' },
+                    { sno: 4, zone: '2', ward: '56-Mandi Ramdas', vehicle: 'M268 UP85ET 7848', vtype: 'Primary - Auto Tipper', route: 'W56R4', total: 32, covered: 32, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '07:56 AM', outTime: '11:31 AM' },
+                    { sno: 5, zone: '2', ward: '30-Krishna Nagar Second', vehicle: 'M009 UP14PT7717', vtype: 'Primary - Auto Tipper', route: 'W30R1', total: 492, covered: 491, pending: 1, coverage: '99%', date: reportFilters.startDate, inTime: '08:10 AM', outTime: '12:21 PM' },
+                ]);
+            } else if (reportType === 'Trip Report') {
+                setReportData([
+                    { sno: 1, vehicle: 'UP85AG0770', driver: 'Rajesh Kumar', trips: 3, distance: '45.2 km', start: '07:40 AM', end: '11:51 AM', status: 'Completed', date: reportFilters.startDate },
+                    { sno: 2, vehicle: 'UP85ET 7839', driver: 'Amit Singh', trips: 2, distance: '28.5 km', start: '08:38 AM', end: '10:14 AM', status: 'Completed', date: reportFilters.startDate },
+                ]);
+            } else if (reportType === 'Distance Report') {
+                setReportData([
+                    { sno: 1, vehicle: 'UP85AG0770', zone: 'Zone 1', distance: '45.2 km', fuel: '8.5L', duration: '4h 11m', date: reportFilters.startDate },
+                    { sno: 2, vehicle: 'UP85ET 7839', zone: 'Zone 1', distance: '28.5 km', fuel: '5.2L', duration: '1h 36m', date: reportFilters.startDate },
+                ]);
+            }
+        }, 1200);
+    };
     const [routePath, setRoutePath] = useState<any>(null);
     const [wardRoads, setWardRoads] = useState<any[]>([]);
     const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
@@ -166,13 +225,13 @@ const POIMonitoringPage = () => {
     );
 
     const zones = ['All', 'Zone A', 'Zone B', 'Zone C'];
-    const wards = ['All', 'Ward 01', 'Ward 02', 'Ward 03', 'Ward 04', 'Ward 05', 'Ward 06', 'Ward 07', 'Ward 08', 'Ward 09', 'Ward 10'];
-    const routesArray = ['All', 'W01R1', 'W01R2', 'W02R1', 'W05R1'];
+    const wards = ['All', '35-Bankhandi', '65-Holi Gali', '56-Mandi Ramdas', '30-Krishna Nagar', 'Ward 05'];
+    const routesArray = ['All', 'W35R1', 'W65R1', 'W56R1', 'W30R1'];
 
     const summaryCards = [
         { label: 'Total Households', value: stats?.totalPOIs || '0', icon: POIIcon, color: 'text-blue-600 bg-blue-100' },
         { label: 'Covered Today', value: stats?.coveredToday || '0', icon: CheckCircle, color: 'text-green-600 bg-green-100' },
-        { label: 'Coverage %', value: `${stats?.coveragePercentage || '0'}%`, icon: TrendingUp, color: 'text-emerald-600 bg-emerald-100' },
+        { label: 'Coverage %', value: `${stats?.coveragePercentage || '0'}% `, icon: TrendingUp, color: 'text-emerald-600 bg-emerald-100' },
         { label: 'Active Vehicles', value: stats?.activeVehicles || '0', icon: Truck, color: 'text-purple-600 bg-purple-100' },
     ];
 
@@ -214,9 +273,14 @@ const POIMonitoringPage = () => {
                     <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 font-display tracking-tight leading-none mb-2">
                         POI Monitoring
                     </h1>
-                    <p className="text-sm font-bold text-gray-500 dark:text-gray-400 tracking-tight">
-                        Real-time household coverage tracking and reporting.
-                    </p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <p className="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest">
+                            Welcome {userName}, {getGreeting()}!
+                        </p>
+                        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 tracking-tight">
+                            Real-time household coverage tracking and reporting.
+                        </p>
+                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -233,20 +297,60 @@ const POIMonitoringPage = () => {
                 </div>
             </div>
 
-            {/* Reports Section */}
-            <div className="flex flex-wrap gap-4 items-center">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block w-full mb-1">Reports</span>
-                {[
-                    { label: 'Trip Report', icon: FileText, color: 'text-emerald-500 bg-emerald-50' },
-                    { label: 'POI Report', icon: Target, color: 'text-cyan-500 bg-cyan-50' },
-                    { label: 'Coverage Overview', icon: Activity, color: 'text-teal-500 bg-teal-50' },
-                    { label: 'Distance Report', icon: Navigation, color: 'text-indigo-500 bg-indigo-50' },
-                ].map((report, i) => (
-                    <button key={i} className={`flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all ${report.color}`}>
-                        <report.icon size={16} />
-                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200">{report.label}</span>
-                    </button>
-                ))}
+            {/* Reports Control Center */}
+            <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-md p-4 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2 px-1">
+                        <div className="w-1 h-3 bg-emerald-500 rounded-full"></div>
+                        <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">Available Reports</span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                        {[
+                            { label: 'Trip Report', icon: FileText, color: 'emerald' },
+                            { label: 'POI Report', icon: Target, color: 'cyan' },
+                            { label: 'Coverage Overview', icon: Activity, color: 'teal' },
+                            { label: 'Distance Report', icon: Navigation, color: 'indigo' },
+                        ].map((report, i) => (
+                            <button
+                                key={i}
+                                onClick={() => handleGenerateReport(report.label)}
+                                disabled={generatingReport !== null}
+                                className={`
+                                    flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all relative overflow-hidden group
+                                    ${generatingReport === report.label
+                                        ? 'bg-emerald-500 border-emerald-500 text-white'
+                                        : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10'
+                                    }
+                                `}
+                            >
+                                <div className={`
+                                    p-2 rounded-xl transition-colors
+                                    ${generatingReport === report.label ? 'bg-white/20' : 'bg-gray-50 dark:bg-gray-800 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/30'}
+                                `}>
+                                    {generatingReport === report.label ? (
+                                        <RefreshCw size={16} className="animate-spin" />
+                                    ) : (
+                                        <report.icon size={16} className={generatingReport === report.label ? 'text-white' : 'text-gray-500 dark:text-gray-400 group-hover:text-emerald-500'} />
+                                    )}
+                                </div>
+
+                                <span className={`text-xs font-black uppercase tracking-tight ${generatingReport === report.label ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                                    {report.label}
+                                </span>
+
+                                {generatingReport === report.label && (
+                                    <motion.div
+                                        initial={{ x: '-100%' }}
+                                        animate={{ x: '100%' }}
+                                        transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                                        className="absolute bottom-0 left-0 w-full h-0.5 bg-white/40"
+                                    />
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             {/* Summary Grid */}
@@ -348,7 +452,7 @@ const POIMonitoringPage = () => {
                         </thead>
                         <tbody className="bg-white dark:bg-gray-800">
                             <tr className="border-b dark:border-gray-700">
-                                <td className="py-3 px-4 font-bold text-gray-700 dark:text-gray-300">{selectedRoute === 'All' ? `${selectedWard}R1` : selectedRoute}</td>
+                                <td className="py-3 px-4 font-bold text-gray-700 dark:text-gray-300">{selectedRoute === 'All' ? `${selectedWard} R1` : selectedRoute}</td>
                                 <td className="py-3 px-4 font-bold text-gray-700 dark:text-gray-300">TIPPER-001 (UP81T{Math.floor(Math.random() * 9000) + 1000})</td>
                                 <td className="py-3 px-4 font-bold text-gray-700 dark:text-gray-300">{pois.length || 85}</td>
                                 <td className="py-3 px-4 font-bold text-gray-700 dark:text-gray-300">{pois.filter(p => p.status === 'covered').length || 67}</td>
@@ -379,14 +483,14 @@ const POIMonitoringPage = () => {
                 <div className="flex bg-white dark:bg-gray-900 p-1 rounded-lg border border-gray-100 dark:border-gray-800 shadow-inner">
                     <button
                         onClick={() => setViewMode('map')}
-                        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'map' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'}`}
+                        className={`flex items - center gap - 2 px - 4 py - 1.5 rounded - md text - [10px] font - black uppercase tracking - widest transition - all ${viewMode === 'map' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'} `}
                     >
                         <MapIcon size={14} />
                         Map
                     </button>
                     <button
                         onClick={() => setViewMode('list')}
-                        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'list' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'}`}
+                        className={`flex items - center gap - 2 px - 4 py - 1.5 rounded - md text - [10px] font - black uppercase tracking - widest transition - all ${viewMode === 'list' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'} `}
                     >
                         <List size={14} />
                         List
@@ -416,7 +520,7 @@ const POIMonitoringPage = () => {
                                 {/* Base Road Layer */}
                                 {wardRoads.map((road, i) => (
                                     <Polyline
-                                        key={`road-${i}`}
+                                        key={`road - ${i} `}
                                         positions={road}
                                         pathOptions={{
                                             color: '#94a3b8',
@@ -452,8 +556,8 @@ const POIMonitoringPage = () => {
                                             <div className="p-2 min-w-[200px]">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <h4 className="font-bold text-gray-800">{poi.ownerName}</h4>
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${poi.status === 'covered' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                                        }`}>
+                                                    <span className={`px - 2 py - 0.5 rounded - full text - [10px] font - bold ${poi.status === 'covered' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                        } `}>
                                                         {poi.status.toUpperCase()}
                                                     </span>
                                                 </div>
@@ -484,9 +588,9 @@ const POIMonitoringPage = () => {
                                         <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">Switch Map</span>
                                         <div
                                             onClick={() => setMapType(mapType === 'street' ? 'satellite' : 'street')}
-                                            className={`w-8 h-4 ${mapType === 'satellite' ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'} rounded-full relative cursor-pointer transition-colors group`}
+                                            className={`w - 8 h - 4 ${mapType === 'satellite' ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'} rounded - full relative cursor - pointer transition - colors group`}
                                         >
-                                            <div className={`absolute top-1 w-2 h-2 bg-white rounded-full transition-all ${mapType === 'satellite' ? 'left-5' : 'left-1'}`}></div>
+                                            <div className={`absolute top - 1 w - 2 h - 2 bg - white rounded - full transition - all ${mapType === 'satellite' ? 'left-5' : 'left-1'} `}></div>
                                         </div>
                                     </div>
                                 </div>
@@ -551,10 +655,10 @@ const POIMonitoringPage = () => {
                                                     <span className="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded-lg uppercase">{poi.ward}</span>
                                                 </td>
                                                 <td className="p-4 border-b dark:border-gray-700">
-                                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-widest border ${poi.status === 'covered'
+                                                    <span className={`px - 2.5 py - 1 rounded - full text - [10px] font - black tracking - widest border ${poi.status === 'covered'
                                                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800'
                                                         : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:border-red-800'
-                                                        }`}>
+                                                        } `}>
                                                         {poi.status.toUpperCase()}
                                                     </span>
                                                 </td>
@@ -611,7 +715,7 @@ const POIMonitoringPage = () => {
                             <div className="overflow-hidden h-3 flex rounded-full bg-gray-100 dark:bg-gray-700 shadow-inner">
                                 <motion.div
                                     initial={{ width: 0 }}
-                                    animate={{ width: `${stats?.coveragePercentage}%` }}
+                                    animate={{ width: `${stats?.coveragePercentage}% ` }}
                                     transition={{ duration: 1.5, ease: 'circOut' }}
                                     className="flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                                 ></motion.div>
@@ -680,6 +784,177 @@ const POIMonitoringPage = () => {
                     </div>
                 </div>
             </div>
+            {/* Report Modal - Matches Reference Screenshot */}
+            <AnimatePresence>
+                {showReport && (
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-hidden">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                            className="bg-white dark:bg-gray-800 w-full max-w-[98%] max-h-[96vh] rounded-xl shadow-2xl flex flex-col overflow-hidden"
+                        >
+                            {/* Modal Header */}
+                            <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+                                <h2 className="text-lg font-bold text-gray-800 dark:text-white">
+                                    {activeReport} - Todays Date
+                                </h2>
+                                <button
+                                    onClick={() => setShowReport(false)}
+                                    className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                {/* Stats Summary Row */}
+                                <div className="flex flex-wrap items-center justify-between gap-4 text-sm font-bold text-gray-600 dark:text-gray-300 px-2">
+                                    <div className="flex gap-6">
+                                        <span>Total Rows : <span className="text-gray-900 dark:text-white">166</span></span>
+                                        <span>Total Unique Route Count : <span className="text-gray-900 dark:text-white">166</span></span>
+                                        <span>Covered Count : <span className="text-emerald-600">76,514</span></span>
+                                    </div>
+
+                                    {/* Legend */}
+                                    <div className="flex items-center gap-4 text-[10px] uppercase tracking-wider">
+                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-red-500 rounded-sm"></div> 0-30%</div>
+                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-gray-400 rounded-sm"></div> 31-60%</div>
+                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-blue-600 rounded-sm"></div> 61-80%</div>
+                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div> 81-100%</div>
+                                    </div>
+                                </div>
+
+                                {/* Filter Controls Row */}
+                                <div className="flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
+                                    <select
+                                        value={reportFilters.zone}
+                                        onChange={(e) => setReportFilters({ ...reportFilters, zone: e.target.value })}
+                                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-32"
+                                    >
+                                        <option>Zone A</option>
+                                        <option>Zone B</option>
+                                        <option>Zone C</option>
+                                    </select>
+                                    <select
+                                        value={reportFilters.ward}
+                                        onChange={(e) => setReportFilters({ ...reportFilters, ward: e.target.value })}
+                                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-32"
+                                    >
+                                        <option>Ward 01</option>
+                                        <option>Ward 02</option>
+                                        <option>Ward 03</option>
+                                    </select>
+                                    <select
+                                        value={reportFilters.vehicle}
+                                        onChange={(e) => setReportFilters({ ...reportFilters, vehicle: e.target.value })}
+                                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-40"
+                                    >
+                                        <option value="All">All Vehicles</option>
+                                        <option>UP85AG0770</option>
+                                        <option>UP85ET7839</option>
+                                    </select>
+                                    <select
+                                        value={reportFilters.vType}
+                                        onChange={(e) => setReportFilters({ ...reportFilters, vType: e.target.value })}
+                                        className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-48"
+                                    >
+                                        <option value="All">All types</option>
+                                        <option>Auto Tipper</option>
+                                        <option>Wheel Barrow</option>
+                                    </select>
+                                    <div className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500">
+                                        <Calendar size={14} />
+                                        <input
+                                            type="date"
+                                            value={reportFilters.startDate}
+                                            onChange={(e) => setReportFilters({ ...reportFilters, startDate: e.target.value })}
+                                            className="bg-transparent outline-none w-24 ml-1"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500">
+                                        <Calendar size={14} />
+                                        <input
+                                            type="date"
+                                            value={reportFilters.endDate}
+                                            onChange={(e) => setReportFilters({ ...reportFilters, endDate: e.target.value })}
+                                            className="bg-transparent outline-none w-24 ml-1"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={() => handleGenerateReport(activeReport)}
+                                        className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500 text-white text-xs font-black rounded hover:bg-emerald-600 transition-all ml-auto"
+                                    >
+                                        <SearchIcon size={14} /> Search All
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const csvContent = "data:text/csv;charset=utf-8," +
+                                                reportData.map(r => Object.values(r).join(",")).join("\n");
+                                            const encodedUri = encodeURI(csvContent);
+                                            const link = document.createElement("a");
+                                            link.setAttribute("href", encodedUri);
+                                            link.setAttribute("download", `${activeReport.toLowerCase().replace(/ /g, '_')}.csv`);
+                                            document.body.appendChild(link);
+                                            link.click();
+                                        }}
+                                        className="px-4 py-1.5 bg-gray-900 text-white text-xs font-black rounded hover:bg-black transition-all"
+                                    >
+                                        Export
+                                    </button>
+                                </div>
+
+                                {/* Main Data Table */}
+                                <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
+                                    <table className="w-full text-left border-collapse min-w-[1200px]">
+                                        <thead>
+                                            <tr className="bg-emerald-500 text-white font-black text-[10px] uppercase tracking-widest">
+                                                {reportData.length > 0 && Object.keys(reportData[0]).map((key) => (
+                                                    <th key={key} className="px-4 py-3 border-r border-emerald-400/30">
+                                                        {key === 'sno' ? 'S.No' :
+                                                            key === 'vtype' ? 'Vehicle Type' :
+                                                                key === 'inTime' ? 'In Time' :
+                                                                    key === 'outTime' ? 'Out Time' :
+                                                                        key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
+                                                    </th>
+                                                ))}
+                                                <th className="px-4 py-3 text-center">Trip Playback</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
+                                            {reportData.map((row, idx) => (
+                                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                                                    {Object.entries(row).map(([key, value]: [string, any], i) => (
+                                                        <td key={i} className={`px-4 py-4 border-r dark:border-gray-700 ${key === 'ward' ? 'text-blue-600 dark:text-blue-400' : ''} ${key === 'coverage' ? 'font-black text-emerald-600' : ''}`}>
+                                                            {value}
+                                                        </td>
+                                                    ))}
+                                                    <td className="px-4 py-4 text-center">
+                                                        <button className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-all">
+                                                            <Activity size={14} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+                                <button
+                                    onClick={() => setShowReport(false)}
+                                    className="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-black rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+                                >
+                                    Close Report
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
         </motion.div>
     );
 };

@@ -8,7 +8,7 @@ import {
     Home, Briefcase, Building2, Factory, Layers,
     IndianRupee, Gauge, Droplets, TrendingUp,
     Scale, Truck, WifiOff, PlayCircle, OctagonAlert, PauseCircle, StopCircle,
-    CalendarCheck, Edit, MessageSquare
+    CalendarCheck, Edit, MessageSquare, RefreshCw
 } from 'lucide-react';
 import {
     TruckIllustration,
@@ -44,12 +44,26 @@ const NoDataView = ({ message = "No records found", illustration: Illustration =
 );
 
 const BulkCollectionPage = () => {
+    const [loading, setLoading] = React.useState(false);
+    const [records, setRecords] = React.useState<any[]>([]);
+
+    const handleSearch = () => {
+        setLoading(true);
+        setTimeout(() => {
+            setRecords([
+                { id: '1001', qr: 'QR-A1', date: '2026-03-07', site: 'Grand Hotel', supervisor: 'Ramesh Balan', sid: 'S001', btime: '07:30 AM', bimg: 'Img1', atime: '08:15 AM', aimg: 'Img2', ward: '35-Bankhandi', fill: '85%', feedback: 'Good' },
+                { id: '1002', qr: 'QR-B2', date: '2026-03-07', site: 'City Hospital', supervisor: 'Suresh Kumar', sid: 'S002', btime: '08:00 AM', bimg: 'Img3', atime: '08:45 AM', aimg: 'Img4', ward: '65-Holi Gali', fill: '40%', feedback: 'On-time' },
+                { id: '1003', qr: 'QR-C3', date: '2026-03-07', site: 'Metro Mall', supervisor: 'Anil Yadav', sid: 'S003', btime: '09:15 AM', bimg: 'Img5', atime: '10:00 AM', aimg: 'Img6', ward: '56-Mandi Ramdas', fill: '95%', feedback: 'Overfilled' },
+            ]);
+            setLoading(false);
+        }, 800);
+    };
     // Stats data structure
     const bulkStats = [
-        { title: 'Today', total: 0, unique: 0, tat: '0 m', icon: Calendar, color: 'text-purple-600 bg-purple-100' },
-        { title: 'Yesterday', total: 0, unique: 0, tat: '0 m', icon: Clock, color: 'text-pink-500 bg-pink-100' },
-        { title: 'Till Month', total: 0, unique: 0, tat: '0 m', icon: Calendar, color: 'text-green-600 bg-green-100' },
-        { title: 'Previous Month', total: 0, unique: 0, tat: '0 m', icon: Calendar, color: 'text-blue-600 bg-blue-100' },
+        { title: 'Today', total: 42, unique: 12, tat: '45 m', icon: Calendar, color: 'text-purple-600 bg-purple-100' },
+        { title: 'Yesterday', total: 118, unique: 35, tat: '52 m', icon: Clock, color: 'text-pink-500 bg-pink-100' },
+        { title: 'Till Month', total: 842, unique: 145, tat: '48 m', icon: Calendar, color: 'text-green-600 bg-green-100' },
+        { title: 'Previous Month', total: 2450, unique: 148, tat: '50 m', icon: Calendar, color: 'text-blue-600 bg-blue-100' },
     ];
 
     const BulkStatCard = ({ title, total, unique, tat, icon: Icon, color }: any) => (
@@ -115,8 +129,13 @@ const BulkCollectionPage = () => {
                         </button>
                     </div>
                     <div className="w-full md:w-auto">
-                        <button className="w-full md:w-auto flex items-center justify-center gap-1.5 px-6 py-2 bg-[#22c55e] text-white text-xs font-bold rounded-lg hover:bg-[#16a34a] shadow-sm">
-                            <Search size={14} /> Search
+                        <button
+                            onClick={handleSearch}
+                            disabled={loading}
+                            className={`w-full md:w-auto flex items-center justify-center gap-1.5 px-6 py-2 bg-[#22c55e] text-white text-xs font-bold rounded-lg hover:bg-[#16a34a] shadow-sm ${loading ? 'opacity-70' : ''}`}
+                        >
+                            {loading ? <RefreshCw size={14} className="animate-spin" /> : <Search size={14} />}
+                            Search
                         </button>
                     </div>
                 </div>
@@ -133,7 +152,7 @@ const BulkCollectionPage = () => {
                                 </th>
                                 {[
                                     'Scan ID', 'QR Code ID', 'Date of Scan', 'Site Name', 'Supervisor Name', 'Supervisor ID',
-                                    'Before Clean Time', 'Before Image', 'After Clean Time', 'After Image', 'Ward Name', 'Feedback'
+                                    'Before Clean Time', 'Before Image', 'After Clean Time', 'After Image', 'Ward Name', 'Dustbin Fill %', 'Feedback'
                                 ].map((h) => (
                                     <th key={h} className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30 last:border-none">
                                         {h}
@@ -142,11 +161,40 @@ const BulkCollectionPage = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {/* Empty rows as per request to keep clean state */}
+                            {records.map((r, i) => (
+                                <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                                    <td className="px-4 py-4 text-center border-r dark:border-gray-700 text-emerald-500">▶</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.id}</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.qr}</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.date}</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.site}</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.supervisor}</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700 tracking-tighter">{r.sid}</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.btime}</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700 text-blue-500 underline cursor-pointer">{r.bimg}</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.atime}</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700 text-blue-500 underline cursor-pointer">{r.aimg}</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.ward}</td>
+                                    <td className="px-4 py-4 border-r dark:border-gray-700">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full ${parseInt(r.fill) > 80 ? 'bg-red-500' : 'bg-green-500'}`}
+                                                    style={{ width: r.fill }}
+                                                ></div>
+                                            </div>
+                                            <span className={parseInt(r.fill) > 80 ? 'text-red-500 font-black' : ''}>{r.fill}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-4">{r.feedback}</td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
-                <NoDataView message="No bulk collection records found" illustration={BinIllustration} />
+                {records.length === 0 && (
+                    <NoDataView message={loading ? "Searching records..." : "No bulk collection records found"} illustration={loading ? RefreshCw : BinIllustration} />
+                )}
 
                 {/* Pagination */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">

@@ -14,6 +14,11 @@ import {
   ComplaintChart, BulkCollectionChart, POIWidget, CustomerChart
 } from './Widgets';
 import { useVehicleData } from '../services/vehicleService';
+import { getAuth } from 'firebase/auth';
+import vehicle3D from './images/3d-vehicle.png';
+import vehicleStopped3D from './images/3d-vehicle-stopped.png';
+import vehicleOffline3D from './images/3d-vehicle-offline.png';
+import bin3D from './images/3d-bin.png';
 
 // Fix for default marker icon
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -28,16 +33,28 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Custom Truck Icon for map - Enhanced visibility for satellite view
-const truckIcon = new L.DivIcon({
-  className: '',  // Empty to remove default Leaflet styling
-  html: `<div style="background-color: #0f766e; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 0 0 2px #0f766e, 0 4px 12px rgba(0,0,0,0.5);">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5"/><path d="M14 17h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
-  </div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -16]
-});
+const getVehicleIcon = (speed: string | number) => {
+  const s = typeof speed === 'string' ? parseInt(speed) : speed;
+  const isMoving = s > 0;
+  const color = isMoving ? '#10b981' : '#f59e0b'; // Emerald for moving, Amber for stopped
+
+  return new L.DivIcon({
+    className: 'custom-vehicle-marker',
+    html: `
+      <div style="position: relative;">
+        <div style="background-color: ${color}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5"/><path d="M14 17h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>
+          </svg>
+        </div>
+        ${isMoving ? `<div style="position: absolute; inset: -4px; border-radius: 50%; border: 2px solid ${color}; opacity: 0.4; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>` : ''}
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
+  });
+};
 
 
 interface DashboardProps {
@@ -48,8 +65,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSatelliteView, setIsSatelliteView] = React.useState(false);
+  const [user, setUser] = React.useState<any>(null);
 
-  // Check if user was redirected due to access denial
+  React.useEffect(() => {
+    const auth = getAuth();
+    if (auth.currentUser) {
+      setUser(auth.currentUser);
+    }
+  }, []);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const userName = user?.displayName || user?.email?.split('@')[0] || 'Administrator';
   const searchParams = new URLSearchParams(location.search);
   const isAccessDenied = searchParams.get('access') === 'denied';
 
@@ -114,11 +146,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
     { name: 'Escalated', value: 4, color: '#ef4444' }
   ];
 
-  const bulkCollectionData = [
-    { name: 'Hotels', value: 12, color: '#8b5cf6' },
-    { name: 'Markets', value: 8, color: '#3b82f6' },
-    { name: 'Schools', value: 5, color: '#ec4899' }
-  ];
+  const bulkCollectionData = {
+    segments: [
+      { name: 'Hotels', value: 12, color: '#8b5cf6' },
+      { name: 'Markets', value: 8, color: '#3b82f6' },
+      { name: 'Schools', value: 5, color: '#ec4899' }
+    ],
+    binStatus: [
+      { location: 'Main Market', fill: 85, color: 'bg-rose-500' },
+      { location: 'Hotel Skyline', fill: 45, color: 'bg-emerald-500' },
+      { location: 'City School', fill: 65, color: 'bg-amber-500' }
+    ]
+  };
 
   const customerDistribution = [
     { name: 'Residential', value: 45, color: '#f97316' },
@@ -154,33 +193,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
       )}
 
       {/* Top Actions */}
-      <motion.div variants={itemVariants} className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-        <div className="flex items-center gap-4">
-          <div className="p-4 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-gray-800 border border-indigo-100 dark:border-indigo-800 shadow-xl shadow-indigo-500/5 rounded-[1.5rem] relative group overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <LayoutDashboard size={28} className="text-indigo-600 dark:text-indigo-400 relative z-10" />
+      <motion.div variants={itemVariants} className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-gray-800 border border-indigo-100 dark:border-indigo-800 shadow-lg shadow-indigo-500/5 rounded-2xl relative group overflow-hidden">
+            <LayoutDashboard size={22} className="text-indigo-600 dark:text-indigo-400 relative z-10" />
           </div>
 
           <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tighter font-display leading-tight">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tighter font-display leading-tight">
                 Dashboard Overview
               </h2>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-emerald-100 dark:border-emerald-900/50 rounded-xl shadow-sm">
-                <span className="relative flex h-2 w-2">
+              <div className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-800 border border-emerald-100 dark:border-emerald-900/50 rounded-lg shadow-sm">
+                <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                 </span>
-                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em]">System Live</span>
+                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Live</span>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 p-1">
-              <p className="text-sm font-bold text-gray-500 dark:text-gray-400 tracking-tight">
-                Welcome back, Administrator
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-500">
+                Welcome {userName}, {getGreeting()}!
               </p>
-              <div className="flex items-center gap-2 text-xs font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50/50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-lg border border-indigo-100/50 dark:border-indigo-800/50">
-                <Clock size={12} />
+              <div className="flex items-center gap-1.5 text-[10px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-widest bg-indigo-50/30 dark:bg-indigo-900/10 px-1.5 py-0.5 rounded-md border border-indigo-100/30">
+                <Clock size={10} />
                 {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               </div>
             </div>
@@ -203,15 +241,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
       </motion.div>
 
       {/* Section: Key Metrics */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-          <Activity size={20} className="text-blue-500" />
+      <div className="space-y-3">
+        <h3 className="text-sm font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest flex items-center gap-2">
+          <Activity size={16} className="text-blue-500" />
           Key Metrics
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <ColoredStatCard
             title="Waste Collected"
             value="42.5 Ton"
+            image={bin3D}
             icon={Recycle}
             color="bg-gradient-to-br from-blue-500 to-blue-700"
             delay={0.1}
@@ -219,6 +258,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
           <ColoredStatCard
             title="Active Vehicles"
             value={vehicleStats.total}
+            image={vehicle3D}
             icon={Truck}
             color="bg-gradient-to-br from-teal-500 to-emerald-600"
             delay={0.2}
@@ -242,28 +282,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
       </div>
 
       {/* Section: Operational Widgets */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-          <Activity size={20} className="text-emerald-500" />
+      <div className="space-y-3">
+        <h3 className="text-sm font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest flex items-center gap-2">
+          <Activity size={16} className="text-emerald-500" />
           Operational Overview
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="h-[300px]">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="h-[240px]">
             <VehicleStatusWidget data={vehicleStats.widgetData} />
           </div>
-          <div className="h-[300px]">
+          <div className="h-[240px]">
             <UserChargeWidget data={userChargeData} />
           </div>
-          <div className="h-[300px]">
+          <div className="h-[240px]">
             <ComplaintChart data={complaintData} />
           </div>
-          <div className="h-[300px]">
+          <div className="h-[240px]">
             <BulkCollectionChart data={bulkCollectionData} />
           </div>
-          <div className="h-[300px]">
+          <div className="h-[240px]">
             <POIWidget total={1250} visited={845} />
           </div>
-          <div className="h-[300px]">
+          <div className="h-[240px]">
             <CustomerChart data={customerDistribution} />
           </div>
         </div>
@@ -349,7 +389,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
                 <Marker
                   key={`${vehicle.imei}-${idx}`}
                   position={[parseFloat(vehicle.lat), parseFloat(vehicle.lng)]}
-                  icon={truckIcon}
+                  icon={getVehicleIcon(vehicle.speed)}
                 >
                   <Popup className="glass-popup">
                     <div className="p-2 min-w-[150px]">
