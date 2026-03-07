@@ -17,25 +17,53 @@ export interface VehicleData {
 
 export const fetchVehicleData = async (): Promise<VehicleData[]> => {
     try {
+        console.log('Fetching vehicle data from:', API_PRIMARY);
+        
         // Fetch from both APIs in parallel
         const [response1, response2] = await Promise.all([
             fetch(API_PRIMARY),
             fetch(API_SECONDARY)
         ]);
 
-        const data1 = await response1.json();
-        const data2 = await response2.json();
+        console.log('Response 1 status:', response1.status);
+        console.log('Response 2 status:', response2.status);
 
-        // Combine data from both APIs
-        // Assuming both return { data: [...] } structure
-        const vehiclesFn1 = data1.data || [];
-        const vehiclesFn2 = data2.data || [];
+        // Check if responses are OK
+        if (!response1.ok) {
+            console.error('API 1 failed with status:', response1.status);
+        }
+        if (!response2.ok) {
+            console.error('API 2 failed with status:', response2.status);
+        }
 
-        // Combine and remove duplicates based on IMEI if necessary
-        // For now, just concatenating
-        return [...vehiclesFn1, ...vehiclesFn2];
-    } catch (error) {
+        const contentType1 = response1.headers.get('content-type');
+        const contentType2 = response2.headers.get('content-type');
+        
+        console.log('Content-Type 1:', contentType1);
+        console.log('Content-Type 2:', contentType2);
+
+        // Check if response is JSON
+        if (contentType1 && contentType1.includes('application/json')) {
+            const data1 = await response1.json();
+            const vehiclesFn1 = data1.data || [];
+            
+            if (contentType2 && contentType2.includes('application/json')) {
+                const data2 = await response2.json();
+                const vehiclesFn2 = data2.data || [];
+                
+                return [...vehiclesFn1, ...vehiclesFn2];
+            } else {
+                return vehiclesFn1;
+            }
+        } else {
+            console.error('Response is not JSON. Content-Type:', contentType1);
+            const text = await response1.text();
+            console.error('Response body:', text.substring(0, 200));
+            return [];
+        }
+    } catch (error: any) {
         console.error('Error fetching vehicle data:', error);
+        console.error('Error details:', error.message);
         return [];
     }
 };
