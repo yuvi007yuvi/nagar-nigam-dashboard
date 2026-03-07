@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion, Variants } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import L from 'leaflet';
 import {
   Wallet, Fuel, Truck,
@@ -45,7 +45,22 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSatelliteView, setIsSatelliteView] = React.useState(false);
+
+  // Check if user was redirected due to access denial
+  const searchParams = new URLSearchParams(location.search);
+  const isAccessDenied = searchParams.get('access') === 'denied';
+
+  React.useEffect(() => {
+    if (isAccessDenied) {
+      // Clear the query param after showing the message
+      const timer = setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isAccessDenied, navigate]);
 
   // Fetch vehicle data
   const { vehicles, loading } = useVehicleData();
@@ -92,6 +107,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
       initial="hidden"
       animate="visible"
     >
+      {/* Access Denied Alert */}
+      {isAccessDenied && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-sm"
+        >
+          <div className="flex items-start">
+            <AlertTriangle className="w-6 h-6 text-red-500 mt-0.5 flex-shrink-0" />
+            <div className="ml-3 flex-1">
+              <h3 className="text-lg font-semibold text-red-800">Access Denied</h3>
+              <p className="text-red-700 mt-1 text-sm">
+                You don't have permission to access the page you were trying to visit. Please contact your administrator if you need access.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Top Actions */}
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

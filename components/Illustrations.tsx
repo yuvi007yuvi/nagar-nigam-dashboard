@@ -19,7 +19,7 @@ export const TruckIllustration = ({ className = "w-32 h-32" }: { className?: str
           <path d="M20,70 L160,70 L160,80 L20,80 Z" fill="#ffffff" opacity="0.3" />
           
           {/* Text */}
-          <text x="40" y="65" fill="white" fontSize="10" fontWeight="bold" fontFamily="sans-serif">Nagar Nigam</text>
+          <text x="40" y="65" fill="white" fontSize="10" fontWeight="bold" fontFamily="sans-serif">Waste Mgr</text>
 
           {/* Cab */}
           <path d="M160,100 L210,100 L210,60 L180,40 L160,40 Z" fill="#34D399" />

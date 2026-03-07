@@ -40,7 +40,7 @@ const HomePage: React.FC = () => {
 
     // Set document title on mount
     useEffect(() => {
-        document.title = "Nagar Nigam Dashboard - Smart Waste Management Portal";
+        document.title = "Smart Waste Management Dashboard";
     }, []);
 
     // Track mouse position for magnetic effects
@@ -225,7 +225,7 @@ const HomePage: React.FC = () => {
                             <img src={logo} alt="Logo" className="w-16 h-16 object-contain" />
                             <div>
                                 <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent font-display">
-                                    Nagar Nigam Dashboard
+                                    Smart Waste Dashboard
                                 </h1>
                                 <p className="text-sm text-gray-500 font-medium">Smart Waste Management</p>
                             </div>
@@ -696,7 +696,7 @@ const HomePage: React.FC = () => {
                         <div>
                             <div className="flex items-center gap-2 mb-4">
                                 <img src={logo} alt="Logo" className="w-10 h-10 object-contain" />
-                                <span className="font-bold text-xl font-display">Nagar Nigam</span>
+                                <span className="font-bold text-xl font-display">Waste Manager</span>
                             </div>
                             <p className="text-gray-400 text-sm leading-relaxed">
                                 Smart waste management solutions for modern cities. Building a cleaner, more efficient future.

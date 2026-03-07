@@ -44,11 +44,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userId }) => {
       setRefreshing(true);
       setLoading(true);
       const result = await getAllowedModules(userId);
+      console.log('Sidebar: Allowed modules result:', result);
       if (result.success) {
+        console.log('Sidebar: Setting allowed modules:', result.data);
         setAllowedModules(result.data);
+      } else {
+        console.error('Sidebar: Failed to get allowed modules:', result.error);
       }
     } catch (error) {
-      console.error('Error fetching allowed modules:', error);
+      console.error('Sidebar: Error fetching allowed modules:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -57,7 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userId }) => {
 
   // All possible menu items
   const allMenuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { name: 'Customers', icon: Users, path: '/customers' },
     { name: 'User Charge', icon: Wallet, path: '/user-charge' },
     { name: 'Fuel', icon: Fuel, path: '/fuel' },
@@ -74,19 +78,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userId }) => {
   ];
 
   // Filter menu items based on user's allowed modules
-  const menuItems = allMenuItems.filter(item =>
-    allowedModules.includes(item.name)
-  );
+  const menuItems = allMenuItems.filter(item => {
+    const isAllowed = allowedModules.includes(item.name);
+    console.log(`Sidebar: Module ${item.name} - Allowed: ${isAllowed}`);
+    return isAllowed;
+  });
 
   const handleNavigate = (path: string) => {
+    console.log('Navigating to:', path);
     navigate(path);
     // On mobile, close sidebar after selection
     if (window.innerWidth < 1024) onClose();
   };
 
   const isActive = (path: string) => {
-    if (path === '/' && location.pathname === '/') return true;
-    if (path !== '/' && location.pathname.startsWith(path)) return true;
+    if (path === '/dashboard' && location.pathname === '/dashboard') return true;
+    if (path !== '/dashboard' && location.pathname.startsWith(path)) return true;
     return false;
   };
 
@@ -131,7 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userId }) => {
             <img src={logo} alt="Logo" className="w-full h-full object-contain" />
           </motion.div>
           <div>
-            <h1 className="font-bold text-lg leading-tight tracking-tight text-gray-800 dark:text-gray-100 font-display">Nagar Nigam</h1>
+            <h1 className="font-bold text-lg leading-tight tracking-tight text-gray-800 dark:text-gray-100 font-display">Waste Manager</h1>
             <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Dashboard</p>
           </div>
         </div>

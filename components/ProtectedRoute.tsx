@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { getAllowedModules } from '../services/userRoleService';
 
 interface ProtectedRouteProps {
@@ -11,14 +11,46 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ userId, requiredModule, children }) => {
     const [hasAccess, setHasAccess] = useState<boolean | null>(null);
     const [loading, setLoading] = useState(true);
+    const [redirectTo, setRedirectTo] = useState<string | null>(null);
+    const location = useLocation();
 
     useEffect(() => {
+        console.log('ProtectedRoute: Checking access for', requiredModule);
         const checkAccess = async () => {
             try {
                 const result = await getAllowedModules(userId);
+                console.log('ProtectedRoute: Allowed modules:', result.data);
                 if (result.success) {
                     const allowed = result.data.includes(requiredModule);
+                    console.log('ProtectedRoute: Has access?', allowed);
                     setHasAccess(allowed);
+
+                    // If no access, find first allowed module to redirect to
+                    if (!allowed && result.data.length > 0) {
+                        // Map module names to routes
+                        const moduleRoutes: Record<string, string> = {
+                            'Dashboard': '/dashboard',
+                            'Customers': '/customers',
+                            'User Charge': '/user-charge',
+                            'Fuel': '/fuel',
+                            'Weighment': '/weighment',
+                            'Bulk Collection': '/bulk-collection',
+                            'Live Vehicle': '/live-vehicle',
+                            'Attendance': '/attendance',
+                            'Complaint': '/complaint',
+                            'Admin': '/admin',
+                            'KPI Dashboard': '/kpi-dashboard',
+                            'Roles': '/roles',
+                            'Profile': '/profile'
+                        };
+
+                        // Find first allowed module that has a route
+                        const firstAllowedModule = result.data.find(module => moduleRoutes[module]);
+                        if (firstAllowedModule) {
+                            console.log('ProtectedRoute: Redirecting to:', firstAllowedModule);
+                            setRedirectTo(moduleRoutes[firstAllowedModule]);
+                        }
+                    }
                 } else {
                     setHasAccess(false);
                 }
@@ -41,8 +73,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ userId, requiredModule,
         );
     }
 
+    // Redirect to first allowed module if available
+    if (redirectTo) {
+        return <Navigate to={redirectTo} replace />;
+    }
+
     if (!hasAccess) {
-        return <Navigate to="/" replace />;
+        // Redirect to dashboard with access denied state
+        return <Navigate to="/dashboard?access=denied" state={{ from: location }} replace />;
     }
 
     return <>{children}</>;

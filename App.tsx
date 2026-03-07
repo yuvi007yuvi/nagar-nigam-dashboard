@@ -31,18 +31,21 @@ function App() {
       setLoading(false);
       if (!user) {
         initializedUserRef.current = null;
-        // No automatic redirect - let routing handle it
       } else {
         // Only initialize if we haven't already for this user
         if (initializedUserRef.current !== user.uid) {
           initializedUserRef.current = user.uid;
 
-          // Store user information in the database
-          await storeUserLogin(user);
-          // Initialize default roles if they don't exist
-          await initializeDefaultRoles();
-          // Ensure user has a role assigned
-          await assignDefaultRoleIfNeeded(user.uid);
+          try {
+            // Store user information in the database
+            await storeUserLogin(user);
+            // Initialize default roles if they don't exist
+            await initializeDefaultRoles();
+            // Ensure user has a role assigned
+            await assignDefaultRoleIfNeeded(user.uid);
+          } catch (error) {
+            console.error('Error initializing user:', error);
+          }
         }
       }
     });
@@ -67,12 +70,15 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={!user ? <HomePage /> : <Navigate to="/dashboard" />} />
-          <Route path="/home" element={<HomePage />} />
+          <Route path="/home" element={!user ? <HomePage /> : <Navigate to="/dashboard" />} />
           <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" />} />
 
           {/* Protected Routes wrapped in Layout */}
           {user && (
             <Route element={<Layout userId={user.uid} />}>
+              {/* Smart redirect to user's first allowed module */}
+              <Route path="/redirect" element={<SmartRedirect userId={user.uid} />} />
+              
               <Route path="/dashboard" element={
                 <ProtectedRoute userId={user?.uid || ''} requiredModule="Dashboard">
                   <Dashboard />
