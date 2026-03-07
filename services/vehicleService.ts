@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 
-// API Endpoints
-const API_PRIMARY = '/api/vehicle?key=09C5E59F150AFA8481F39ADCF9405858&cmd=ALL,*';
-const API_SECONDARY = '/api/vehicle?key=162814E902A9896655663D59F9BE98D5&cmd=ALL,*';
+// API Endpoints - Using absolute URLs for production
+const API_PRIMARY = 'https://oempowersupply.in/naturegreen.php?key=09C5E59F150AFA8481F39ADCF9405858&cmd=ALL,*';
+const API_SECONDARY = 'https://oempowersupply.in/naturegreen.php?key=162814E902A9896655663D59F9BE98D5&cmd=ALL,*';
 
 export interface VehicleData {
     imei: string;
@@ -21,8 +21,20 @@ export const fetchVehicleData = async (): Promise<VehicleData[]> => {
         
         // Fetch from both APIs in parallel
         const [response1, response2] = await Promise.all([
-            fetch(API_PRIMARY),
-            fetch(API_SECONDARY)
+            fetch(API_PRIMARY, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            }),
+            fetch(API_SECONDARY, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            })
         ]);
 
         console.log('Response 1 status:', response1.status);
@@ -58,7 +70,7 @@ export const fetchVehicleData = async (): Promise<VehicleData[]> => {
         } else {
             console.error('Response is not JSON. Content-Type:', contentType1);
             const text = await response1.text();
-            console.error('Response body:', text.substring(0, 200));
+            console.error('Response body (first 500 chars):', text.substring(0, 500));
             return [];
         }
     } catch (error: any) {

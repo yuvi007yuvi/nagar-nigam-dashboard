@@ -8,14 +8,7 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
-      host: '0.0.0.0',
-      proxy: {
-        '/api/vehicle': {
-          target: 'https://oempowersupply.in',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/vehicle/, '/naturegreen.php')
-        }
-      }
+      host: '0.0.0.0'
     },
     plugins: [
       react(),
