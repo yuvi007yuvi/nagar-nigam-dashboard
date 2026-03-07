@@ -225,7 +225,7 @@ const POIMonitoringPage = () => {
     );
 
     const zones = ['All', 'Zone A', 'Zone B', 'Zone C'];
-    const wards = ['All', '35-Bankhandi', '65-Holi Gali', '56-Mandi Ramdas', '30-Krishna Nagar', 'Ward 05'];
+    const wards = ['All', '35-Bankhandi', '65-Holi Gali', '56-Mandi Ramdas', '30-Krishna Nagar', '42-Laxmi Nagar'];
     const routesArray = ['All', 'W35R1', 'W65R1', 'W56R1', 'W30R1'];
 
     const summaryCards = [

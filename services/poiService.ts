@@ -66,7 +66,7 @@ export const getPOIs = async (ward?: string, zone?: string) => {
 
         // Ward 30 - Krishna Nagar
         mockPOIs.push({ id: 'w30-1', lat: 27.4850, lng: 77.6600, address: 'Krishna Nagar Sector 1', ward: '30-Krishna Nagar', ownerName: 'Vikas', houseNumber: 'KN-1', status: 'covered', vehicleId: 'UP14PT7717' });
-        mockPOIs.push({ id: 'w05-1', lat: 27.4750, lng: 77.6500, address: 'Mathura Cantonment', ward: 'Ward 05', ownerName: 'Suresh', houseNumber: 'MC-1', status: 'pending' });
+        mockPOIs.push({ id: 'w42-1', lat: 27.4750, lng: 77.6500, address: 'Laxmi Nagar Area', ward: '42-Laxmi Nagar', ownerName: 'Suresh', houseNumber: 'LN-1', status: 'pending' });
 
         let filteredPOIs = mockPOIs;
         if (ward && ward !== 'All') {
@@ -112,7 +112,7 @@ export const getWardRoutes = async (ward?: string) => {
         '65-Holi Gali': ['W65R1', 'W65R2'],
         '56-Mandi Ramdas': ['W56R1'],
         '30-Krishna Nagar': ['W30R1'],
-        'Ward 05': ['W05R1']
+        '42-Laxmi Nagar': ['W42R1']
     };
 
     const data = ward && ward !== 'All' ? wardRoutesMap[ward] || [] : [];

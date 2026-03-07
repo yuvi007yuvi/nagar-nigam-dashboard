@@ -56,5 +56,5 @@ export const MOCK_WARDS = [
     { id: 'w2', name: '65-Holi Gali', zone: 'Zone B' },
     { id: 'w3', name: '56-Mandi Ramdas', zone: 'Zone A' },
     { id: 'w4', name: '30-Krishna Nagar', zone: 'Zone B' },
-    { id: 'w5', name: 'Ward 05', zone: 'Zone C' },
+    { id: 'w5', name: '42-Laxmi Nagar', zone: 'Zone C' },
 ];

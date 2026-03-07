@@ -153,9 +153,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
       { name: 'Schools', value: 5, color: '#ec4899' }
     ],
     binStatus: [
-      { location: 'Main Market', fill: 85, color: 'bg-rose-500' },
-      { location: 'Hotel Skyline', fill: 45, color: 'bg-emerald-500' },
-      { location: 'City School', fill: 65, color: 'bg-amber-500' }
+      { location: 'Bankhandi Market', fill: 85, color: 'bg-rose-500' },
+      { location: 'Chattikara Chowk', fill: 45, color: 'bg-emerald-500' },
+      { location: 'Krishna Nagar', fill: 65, color: 'bg-amber-500' }
     ]
   };
 
