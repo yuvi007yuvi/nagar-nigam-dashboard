@@ -153,18 +153,20 @@ const WeighmentPage = () => {
                             {weighments.map((w, idx) => (
                                 <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-xs text-gray-600 dark:text-gray-300">
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{idx + 1}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200">TKT-{1050 + idx}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200">{w.ticketNo || `TKT-${1050 + idx}`}</td>
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-black">{w.vehicleId}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">Ward 01</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">Nagar Nigam</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{w.ward || 'N/A'}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{w.transporter || 'Nagar Nigam'}</td>
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-bold">{w.grossWeight}</td>
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 text-gray-400 font-medium">{w.tareWeight}</td>
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 text-emerald-600 font-black">{w.netWeight}</td>
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 italic">{w.type || 'Solid Waste'}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">09:12 AM</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{w.time || '10:05 AM'}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{w.timeIn || 'N/A'}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{w.timeOut || w.time || 'N/A'}</td>
                                     <td className="px-4 py-4">
-                                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-black uppercase tracking-tighter">Accepted</span>
+                                        <span className={`px-2 py-1 ${w.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'} rounded-full text-[10px] font-black uppercase tracking-tighter`}>
+                                            {w.status || 'Accepted'}
+                                        </span>
                                     </td>
                                 </tr>
                             ))}

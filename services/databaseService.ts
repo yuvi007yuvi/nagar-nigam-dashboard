@@ -14,7 +14,6 @@ import {
   limit,
   Timestamp
 } from 'firebase/firestore';
-import * as MOCK from './mockData';
 
 // Generic functions for CRUD operations
 
@@ -69,24 +68,6 @@ export const getAllDocuments = async (collectionName: string) => {
     querySnapshot.forEach((doc) => {
       documents.push({ id: doc.id, ...doc.data() });
     });
-
-    if (documents.length === 0) {
-      // Fallback to mock data
-      let mockData: any[] = [];
-      switch (collectionName) {
-        case 'customers': mockData = MOCK.MOCK_CUSTOMERS; break;
-        case 'userCharges': mockData = MOCK.MOCK_USER_CHARGES; break;
-        case 'fuelEntries': mockData = MOCK.MOCK_FUEL_ENTRIES; break;
-        case 'weighments': mockData = MOCK.MOCK_WEIGHMENTS; break;
-        case 'bulkCollections': mockData = MOCK.MOCK_BULK_COLLECTIONS; break;
-        case 'attendanceRecords': mockData = MOCK.MOCK_ATTENDANCE; break;
-        case 'complaints': mockData = MOCK.MOCK_COMPLAINTS; break;
-        case 'zones': mockData = MOCK.MOCK_ZONES; break;
-        case 'wards': mockData = MOCK.MOCK_WARDS; break;
-        default: mockData = [];
-      }
-      return { success: true, data: mockData };
-    }
 
     return { success: true, data: documents };
   } catch (error: any) {

@@ -299,7 +299,6 @@ const UserChargePage = () => {
                         </tbody>
                     </table>
                 </div>
-                <NoDataView message="No user charge transactions found" illustration={WalletIllustration} />
 
                 {/* Pagination */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-800">

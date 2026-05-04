@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/gps-api/(.*)",
+      "destination": "https://oempowersupply.in/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

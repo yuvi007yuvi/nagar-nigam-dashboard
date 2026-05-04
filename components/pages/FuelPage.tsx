@@ -157,15 +157,15 @@ const FuelPage = () => {
                                 <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-xs text-gray-600 dark:text-gray-300">
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{idx + 1}</td>
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200">{e.vehicleId}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">Auto Tipper</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">Karan Singh</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{e.vehicleType || 'Auto Tipper'}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{e.driverName || 'N/A'}</td>
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{e.date}</td>
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 italic">{e.station || 'Bharat Petroleum'}</td>
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-black">{e.quantity} L</td>
                                     <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 text-red-600 font-bold">₹{e.amount}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">12,450</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 text-green-600 font-bold">14.2</td>
-                                    <td className="px-4 py-4 text-blue-600 underline cursor-pointer">{e.slipNo || 'S-001'}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{e.odometer || 'N/A'}</td>
+                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 text-green-600 font-bold">{e.mileage || 'N/A'}</td>
+                                    <td className="px-4 py-4 text-blue-600 underline cursor-pointer">{e.slipNo || 'View'}</td>
                                 </tr>
                             ))}
                         </tbody>

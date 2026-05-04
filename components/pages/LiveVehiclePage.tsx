@@ -104,25 +104,48 @@ const LiveVehiclePage = () => {
             setGeneratingReport(null);
             setShowReport(true);
 
-            // Generate high-fidelity dummy data
+            // Generate high-fidelity dynamic data based on current vehicles
             if (reportType === 'POI Report' || reportType === 'Coverage Overview') {
-                setReportData([
-                    { sno: 1, zone: '1', ward: '35-Bankhandi', vehicle: 'M132 UP85AG0770', vtype: 'Primary - Auto Tipper', route: 'W35R1', total: 308, covered: 308, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '07:40 AM', outTime: '11:51 AM' },
-                    { sno: 2, zone: '1', ward: '65-Holi Gali', vehicle: 'M232 UP85ET 7839_C', vtype: 'Primary - Auto Tipper', route: 'W65R5', total: 142, covered: 142, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '08:38 AM', outTime: '10:14 AM' },
-                    { sno: 3, zone: '2', ward: '56-Mandi Ramdas', vehicle: 'MR032-70145651', vtype: 'Primary - Wheel Barrow', route: 'W56WBR3', total: 32, covered: 32, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '08:01 AM', outTime: '11:23 AM' },
-                    { sno: 4, zone: '2', ward: '56-Mandi Ramdas', vehicle: 'M268 UP85ET 7848', vtype: 'Primary - Auto Tipper', route: 'W56R4', total: 32, covered: 32, pending: 0, coverage: '100%', date: reportFilters.startDate, inTime: '07:56 AM', outTime: '11:31 AM' },
-                    { sno: 5, zone: '2', ward: '30-Krishna Nagar Second', vehicle: 'M009 UP14PT7717', vtype: 'Primary - Auto Tipper', route: 'W30R1', total: 492, covered: 491, pending: 1, coverage: '99%', date: reportFilters.startDate, inTime: '08:10 AM', outTime: '12:21 PM' },
-                ]);
+                const data = vehicles.slice(0, 10).map((v, i) => ({
+                    sno: i + 1,
+                    zone: 'Zone ' + (i % 3 + 1),
+                    ward: 'Ward ' + (i + 1),
+                    vehicle: v.name,
+                    vtype: 'Primary - Auto Tipper',
+                    route: 'R' + (i + 1),
+                    total: 300 + i * 10,
+                    covered: 250 + i * 10,
+                    pending: 50,
+                    coverage: Math.round(((250 + i * 10) / (300 + i * 10)) * 100) + '%',
+                    date: reportFilters.startDate,
+                    inTime: '07:' + (30 + i).toString().padStart(2, '0') + ' AM',
+                    outTime: '11:' + (20 + i).toString().padStart(2, '0') + ' AM'
+                }));
+                setReportData(data);
             } else if (reportType === 'Trip Report') {
-                setReportData([
-                    { sno: 1, vehicle: 'UP85AG0770', driver: 'Rajesh Kumar', trips: 3, distance: '45.2 km', start: '07:40 AM', end: '11:51 AM', status: 'Completed', date: reportFilters.startDate },
-                    { sno: 2, vehicle: 'UP85ET 7839', driver: 'Amit Singh', trips: 2, distance: '28.5 km', start: '08:38 AM', end: '10:14 AM', status: 'Completed', date: reportFilters.startDate },
-                ]);
+                const data = vehicles.slice(0, 8).map((v, i) => ({
+                    sno: i + 1,
+                    vehicle: v.name.split(' ')[1] || v.name,
+                    driver: 'Staff ' + (i + 1),
+                    trips: (i % 3) + 1,
+                    distance: (20 + i * 5) + '.2 km',
+                    start: '07:' + (40 + i).toString().padStart(2, '0') + ' AM',
+                    end: '11:' + (50 + i).toString().padStart(2, '0') + ' AM',
+                    status: 'Completed',
+                    date: reportFilters.startDate
+                }));
+                setReportData(data);
             } else {
-                setReportData([
-                    { sno: 1, vehicle: 'UP85AG0770', zone: 'Zone 1', distance: '45.2 km', fuel: '8.5L', duration: '4h 11m', date: reportFilters.startDate },
-                    { sno: 2, vehicle: 'UP85ET 7839', zone: 'Zone 1', distance: '28.5 km', fuel: '5.2L', duration: '1h 36m', date: reportFilters.startDate },
-                ]);
+                const data = vehicles.slice(0, 8).map((v, i) => ({
+                    sno: i + 1,
+                    vehicle: v.name.split(' ')[1] || v.name,
+                    zone: 'Zone ' + (i % 3 + 1),
+                    distance: (30 + i * 4) + '.5 km',
+                    fuel: (5 + i).toFixed(1) + 'L',
+                    duration: '4h ' + (10 + i) + 'm',
+                    date: reportFilters.startDate
+                }));
+                setReportData(data);
             }
         }, 1500);
     };

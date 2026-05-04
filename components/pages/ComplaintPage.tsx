@@ -5,6 +5,7 @@ import {
     Calendar, MessageSquare, Edit, Inbox, CheckCircle, XCircle, Clock
 } from "lucide-react";
 
+import { useData } from "../../services/DataContext";
 import PageHeader from "../shared/PageHeader";
 
 // --------------------------------------
@@ -13,7 +14,7 @@ import PageHeader from "../shared/PageHeader";
 const NoDataView = ({
     message = "No records found",
     illustration: Illustration = Inbox,
-}) => (
+}: any) => (
     <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
         <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-full mb-4">
             <Illustration size={32} className="text-gray-400 dark:text-gray-500" />
@@ -26,27 +27,24 @@ const NoDataView = ({
 );
 
 // --------------------------------------
-// Temporary Stats Placeholder
-// --------------------------------------
-const complaintStats = [
-    { title: 'Total Complaints', value: '1,245', icon: MessageSquare, color: 'text-blue-600 bg-blue-100' },
-    { title: 'Resolved', value: '1,120', icon: CheckCircle, color: 'text-green-600 bg-green-100' },
-    { title: 'Pending', value: '85', icon: Clock, color: 'text-orange-500 bg-orange-100' },
-    { title: 'Rejected', value: '40', icon: XCircle, color: 'text-red-500 bg-red-100' },
-];
-// Need to add CheckCircle and XCircle to imports
-
-// --------------------------------------
 // Main Component
 // --------------------------------------
 const ComplaintPage = () => {
-    const complaintsData: any[] = [
-        { sno: 1, customerId: 'CUST-8821', name: 'Rahul Varma', number: '+91 98765 43210', date: '2026-03-05', status: 'Resolved', ward: 'Ward 12', type: 'Public Health', complaintId: 'CMP-0041', rDate: '2026-03-06', feedback: 'Satisfied' },
-        { sno: 2, customerId: 'CUST-4122', name: 'Anita Desai', number: '+91 87654 32109', date: '2026-03-06', status: 'Pending', ward: 'Ward 05', type: 'Street Light', complaintId: 'CMP-0042', rDate: '-', feedback: '-' },
-        { sno: 3, customerId: 'CUST-7731', name: 'Sanjay Gupta', number: '+91 76543 21098', date: '2026-03-06', status: 'In-Progress', ward: 'Ward 22', type: 'Sewerage', complaintId: 'CMP-0043', rDate: '-', feedback: '-' },
-        { sno: 4, customerId: 'CUST-1029', name: 'Meena Kumari', number: '+91 65432 10987', date: '2026-03-07', status: 'Resolved', ward: 'Ward 01', type: 'Garbage Collection', complaintId: 'CMP-0044', rDate: '2026-03-07', feedback: 'Excellent' },
-        { sno: 5, customerId: 'CUST-5541', name: 'Sunil Kumar', number: '+91 54321 09876', date: '2026-03-07', status: 'Pending', ward: 'Ward 08', type: 'Public Health', complaintId: 'CMP-0045', rDate: '-', feedback: '-' },
-    ];
+    const { complaints, loading } = useData();
+
+    const stats = React.useMemo(() => {
+        const total = complaints.length;
+        const resolved = complaints.filter(c => c.status === 'Resolved').length;
+        const pending = complaints.filter(c => c.status === 'Pending').length;
+        const rejected = complaints.filter(c => c.status === 'Rejected').length;
+
+        return [
+            { title: 'Total Complaints', value: total.toLocaleString(), icon: MessageSquare, color: 'text-blue-600 bg-blue-100' },
+            { title: 'Resolved', value: resolved.toLocaleString(), icon: CheckCircle, color: 'text-green-600 bg-green-100' },
+            { title: 'Pending', value: pending.toLocaleString(), icon: Clock, color: 'text-orange-500 bg-orange-100' },
+            { title: 'Rejected', value: rejected.toLocaleString(), icon: XCircle, color: 'text-red-500 bg-red-100' },
+        ];
+    }, [complaints]);
 
     return (
         <motion.div
@@ -61,7 +59,7 @@ const ComplaintPage = () => {
 
             {/* Stats Area */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {complaintStats.map((stat, i) => (
+                {stats.map((stat, i) => (
                     <div key={i} className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
                         <div className={`p-3 rounded-xl ${stat.color} bg-opacity-20`}>
                             <stat.icon size={24} className={stat.color.split(' ')[0]} />
@@ -116,7 +114,7 @@ const ComplaintPage = () => {
                 </div>
             </div>
 
-            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Total Rows: {complaintsData.length}</p>
+            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Total Rows: {complaints.length}</p>
 
             {/* Table */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -153,33 +151,41 @@ const ComplaintPage = () => {
                         </thead>
 
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {complaintsData.map((staff, idx) => (
-                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-xs text-gray-600 dark:text-gray-300">
-                                    <td className="px-4 py-4 text-center border-r border-gray-100 dark:border-gray-700 text-emerald-500">▶</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{staff.sno}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200">{staff.customerId}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{staff.name}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{staff.number}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{staff.date}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">
-                                        <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${staff.status === 'Resolved' ? 'bg-green-100 text-green-700' :
-                                                staff.status === 'Pending' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
-                                            }`}>
-                                            {staff.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{staff.ward}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-medium">{staff.type}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-black tracking-tighter text-blue-600 underline cursor-pointer">{staff.complaintId}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{staff.rDate}</td>
-                                    <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 italic">{staff.feedback}</td>
-                                    <td className="px-4 py-4">
-                                        <button className="p-1.5 bg-gray-100 dark:bg-gray-700 rounded hover:bg-emerald-500 hover:text-white transition-all">
-                                            <Edit size={14} />
-                                        </button>
+                            {complaints.length > 0 ? (
+                                complaints.map((staff, idx) => (
+                                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-xs text-gray-600 dark:text-gray-300">
+                                        <td className="px-4 py-4 text-center border-r border-gray-100 dark:border-gray-700 text-emerald-500">▶</td>
+                                        <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{idx + 1}</td>
+                                        <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200">{staff.customerId}</td>
+                                        <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{staff.name}</td>
+                                        <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{staff.number}</td>
+                                        <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{staff.date}</td>
+                                        <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">
+                                            <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${staff.status === 'Resolved' ? 'bg-green-100 text-green-700' :
+                                                    staff.status === 'Pending' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                                                }`}>
+                                                {staff.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{staff.ward}</td>
+                                        <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-medium">{staff.type}</td>
+                                        <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 font-black tracking-tighter text-blue-600 underline cursor-pointer">{staff.complaintId}</td>
+                                        <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700">{staff.rDate}</td>
+                                        <td className="px-4 py-4 border-r border-gray-100 dark:border-gray-700 italic">{staff.feedback}</td>
+                                        <td className="px-4 py-4">
+                                            <button className="p-1.5 bg-gray-100 dark:bg-gray-700 rounded hover:bg-emerald-500 hover:text-white transition-all">
+                                                <Edit size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={13} className="px-4 py-4">
+                                        <NoDataView message="No complaints found" />
                                     </td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>

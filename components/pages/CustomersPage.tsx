@@ -163,7 +163,9 @@ const CustomersPage = () => {
                             <Layers size={20} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-gray-800 dark:text-white">0 / 0</h3>
+                            <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+                                {new Set(customers.map(c => c.ward)).size} / {customers.length}
+                            </h3>
                             <p className="text-xs text-gray-500 dark:text-gray-400">Wards / Customer</p>
                         </div>
                     </div>

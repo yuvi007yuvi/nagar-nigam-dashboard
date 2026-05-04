@@ -8,7 +8,14 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
-      host: '0.0.0.0'
+      host: '0.0.0.0',
+      proxy: {
+        '/gps-api': {
+          target: 'https://oempowersupply.in',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/gps-api/, '')
+        }
+      }
     },
     plugins: [
       react(),

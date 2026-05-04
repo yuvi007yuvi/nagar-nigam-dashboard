@@ -3,37 +3,40 @@ import { motion } from 'framer-motion';
 import { User, Mail, Phone, MapPin, Calendar, IdCard, Home, CreditCard, Search, Filter, Edit, Camera } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
 
+import { useData } from '../../services/DataContext';
+import PageHeader from '../shared/PageHeader';
+
 const CitizenPage = ({ currentUser }: { currentUser: any }) => {
+    const { complaints: allComplaints, userCharges: allPayments, customers, loading: dataLoading } = useData();
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('profile');
 
-    // Mock user data - in a real app, this would come from Firestore
+    // Find citizen record in customers collection
+    const citizenRecord = customers.find(c => c.email === currentUser?.email || c.phone === currentUser?.phoneNumber);
+
     const userData = {
-        name: currentUser?.displayName || 'User',
-        email: currentUser?.email || 'user@example.com',
-        phone: '+91 98765 43210',
-        address: '123 Main Street, Mathura',
-        aadhar: '1234 5678 9012',
-        ward: 'Ward 5',
-        zone: 'Zone B',
-        memberSince: 'Jan 2023',
-        complaints: 3,
-        payments: 12
+        name: currentUser?.displayName || citizenRecord?.name || 'User',
+        email: currentUser?.email || citizenRecord?.email || 'N/A',
+        phone: citizenRecord?.phone || currentUser?.phoneNumber || 'N/A',
+        address: citizenRecord?.address || 'N/A',
+        aadhar: citizenRecord?.aadhar || 'N/A',
+        ward: citizenRecord?.ward || 'N/A',
+        zone: citizenRecord?.zone || 'N/A',
+        memberSince: citizenRecord?.createdAt ? new Date(citizenRecord.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A',
     };
 
-    // Mock complaints data
-    const complaints = [
-        { id: 1, title: 'Garbage Collection Delay', status: 'Open', date: '2023-06-15' },
-        { id: 2, title: 'Street Light Not Working', status: 'Resolved', date: '2023-06-10' },
-        { id: 3, title: 'Water Supply Issue', status: 'In Progress', date: '2023-06-05' }
-    ];
+    // Filter complaints for this specific citizen
+    const complaints = allComplaints.filter(c => 
+        c.customerId === citizenRecord?.customerId || 
+        c.email === currentUser?.email || 
+        c.phone === userData.phone
+    );
 
-    // Mock payment history
-    const payments = [
-        { id: 1, amount: '₹500', date: '2023-06-01', status: 'Paid' },
-        { id: 2, amount: '₹500', date: '2023-05-01', status: 'Paid' },
-        { id: 3, amount: '₹500', date: '2023-04-01', status: 'Paid' }
-    ];
+    // Filter payments for this specific citizen
+    const payments = allPayments.filter(p => 
+        p.customerId === citizenRecord?.customerId || 
+        p.email === currentUser?.email
+    );
 
     const handleEditProfile = () => {
         console.log('Edit profile clicked');
@@ -99,11 +102,11 @@ const CitizenPage = ({ currentUser }: { currentUser: any }) => {
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
                         <div className="text-center">
-                            <p className="text-2xl font-bold text-gray-800 dark:text-white">{userData.complaints}</p>
+                            <p className="text-2xl font-bold text-gray-800 dark:text-white">{complaints.length}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Complaints</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-2xl font-bold text-gray-800 dark:text-white">{userData.payments}</p>
+                            <p className="text-2xl font-bold text-gray-800 dark:text-white">{payments.length}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Payments</p>
                         </div>
                         <div className="text-center">
@@ -225,22 +228,21 @@ const CitizenPage = ({ currentUser }: { currentUser: any }) => {
                             </div>
 
                             <div className="space-y-3">
-                                {complaints.map(complaint => (
-                                    <div key={complaint.id} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                {complaints.length > 0 ? complaints.map((complaint, idx) => (
+                                    <div key={complaint.id || idx} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                                         <div>
-                                            <h4 className="font-medium text-gray-800 dark:text-white">{complaint.title}</h4>
+                                            <h4 className="font-medium text-gray-800 dark:text-white">{complaint.title || complaint.type || 'Complaint'}</h4>
                                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Filed on {complaint.date}</p>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${complaint.status === 'Open' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' : complaint.status === 'In Progress' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'}`}>
                                                 {complaint.status}
                                             </span>
-                                            <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                                                <Filter size={18} />
-                                            </button>
                                         </div>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div className="text-center py-8 text-gray-500">No complaints filed yet.</div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -250,22 +252,24 @@ const CitizenPage = ({ currentUser }: { currentUser: any }) => {
                             <h3 className="font-semibold text-gray-800 dark:text-white mb-4">Payment History</h3>
 
                             <div className="space-y-3">
-                                {payments.map(payment => (
-                                    <div key={payment.id} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                {payments.length > 0 ? payments.map((payment, idx) => (
+                                    <div key={payment.id || idx} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                                         <div>
-                                            <h4 className="font-medium text-gray-800 dark:text-white">{payment.amount}</h4>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Paid on {payment.date}</p>
+                                            <h4 className="font-medium text-gray-800 dark:text-white">₹{payment.amount || 0}</h4>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Paid on {payment.date ? new Date(payment.date).toLocaleDateString() : 'N/A'}</p>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full text-xs font-medium">
-                                                {payment.status}
+                                                Paid
                                             </span>
                                             <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                                                 <CreditCard size={18} />
                                             </button>
                                         </div>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div className="text-center py-8 text-gray-500">No payment history found.</div>
+                                )}
                             </div>
                         </div>
                     )}

@@ -18,6 +18,7 @@ import {
     PeopleIllustration,
     BinIllustration
 } from '../Illustrations';
+import { useData } from '../../services/DataContext';
 import PageHeader from '../shared/PageHeader';
 
 interface NoDataViewProps {
@@ -44,27 +45,33 @@ const NoDataView = ({ message = "No records found", illustration: Illustration =
 );
 
 const BulkCollectionPage = () => {
+    const { bulkCollections, loading: dataLoading } = useData();
     const [loading, setLoading] = React.useState(false);
-    const [records, setRecords] = React.useState<any[]>([]);
+    const [filteredRecords, setFilteredRecords] = React.useState<any[]>([]);
+
+    React.useEffect(() => {
+        setFilteredRecords(bulkCollections);
+    }, [bulkCollections]);
 
     const handleSearch = () => {
         setLoading(true);
+        // Simulate a small delay for better UX, but use real data
         setTimeout(() => {
-            setRecords([
-                { id: '1001', qr: 'QR-A1', date: '2026-03-07', site: 'Grand Hotel', supervisor: 'Ramesh Balan', sid: 'S001', btime: '07:30 AM', bimg: 'Img1', atime: '08:15 AM', aimg: 'Img2', ward: '35-Bankhandi', fill: '85%', feedback: 'Good' },
-                { id: '1002', qr: 'QR-B2', date: '2026-03-07', site: 'City Hospital', supervisor: 'Suresh Kumar', sid: 'S002', btime: '08:00 AM', bimg: 'Img3', atime: '08:45 AM', aimg: 'Img4', ward: '65-Holi Gali', fill: '40%', feedback: 'On-time' },
-                { id: '1003', qr: 'QR-C3', date: '2026-03-07', site: 'Metro Mall', supervisor: 'Anil Yadav', sid: 'S003', btime: '09:15 AM', bimg: 'Img5', atime: '10:00 AM', aimg: 'Img6', ward: '56-Mandi Ramdas', fill: '95%', feedback: 'Overfilled' },
-            ]);
+            setFilteredRecords(bulkCollections);
             setLoading(false);
-        }, 800);
+        }, 500);
     };
-    // Stats data structure
-    const bulkStats = [
-        { title: 'Today', total: 42, unique: 12, tat: '45 m', icon: Calendar, color: 'text-purple-600 bg-purple-100' },
-        { title: 'Yesterday', total: 118, unique: 35, tat: '52 m', icon: Clock, color: 'text-pink-500 bg-pink-100' },
-        { title: 'Till Month', total: 842, unique: 145, tat: '48 m', icon: Calendar, color: 'text-green-600 bg-green-100' },
-        { title: 'Previous Month', total: 2450, unique: 148, tat: '50 m', icon: Calendar, color: 'text-blue-600 bg-blue-100' },
-    ];
+
+    // Stats data structure from live data
+    const stats = React.useMemo(() => {
+        const total = bulkCollections.length;
+        const unique = new Set(bulkCollections.map(r => r.qr)).size;
+        
+        return [
+            { title: 'Total Collections', total: total, unique: unique, tat: '-', icon: Calendar, color: 'text-purple-600 bg-purple-100' },
+            { title: 'Sites Monitored', total: unique, unique: unique, tat: '-', icon: Clock, color: 'text-pink-500 bg-pink-100' },
+        ];
+    }, [bulkCollections]);
 
     const BulkStatCard = ({ title, total, unique, tat, icon: Icon, color }: any) => (
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col justify-between h-full hover:shadow-md transition-shadow">
@@ -100,7 +107,7 @@ const BulkCollectionPage = () => {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {bulkStats.map((stat, i) => (
+                {stats.map((stat, i) => (
                     <BulkStatCard key={i} {...stat} />
                 ))}
             </div>
@@ -161,40 +168,45 @@ const BulkCollectionPage = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {records.map((r, i) => (
-                                <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors text-[11px] font-bold text-gray-700 dark:text-gray-300">
-                                    <td className="px-4 py-4 text-center border-r dark:border-gray-700 text-emerald-500">▶</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.id}</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.qr}</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.date}</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.site}</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.supervisor}</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700 tracking-tighter">{r.sid}</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.btime}</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700 text-blue-500 underline cursor-pointer">{r.bimg}</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.atime}</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700 text-blue-500 underline cursor-pointer">{r.aimg}</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700">{r.ward}</td>
-                                    <td className="px-4 py-4 border-r dark:border-gray-700">
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full ${parseInt(r.fill) > 80 ? 'bg-red-500' : 'bg-green-500'}`}
-                                                    style={{ width: r.fill }}
-                                                ></div>
+                            {filteredRecords.length > 0 ? (
+                                filteredRecords.map((r, i) => (
+                                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                                        <td className="px-4 py-4 text-center border-r dark:border-gray-700 text-emerald-500">▶</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.id}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.qr}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.date}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.site}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.supervisor}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700 tracking-tighter">{r.sid}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.btime}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700 text-blue-500 underline cursor-pointer">{r.bimg}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.atime}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700 text-blue-500 underline cursor-pointer">{r.aimg}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.ward}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700">
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full ${parseInt(r.fill) > 80 ? 'bg-red-500' : 'bg-green-500'}`}
+                                                        style={{ width: r.fill }}
+                                                    ></div>
+                                                </div>
+                                                <span className={parseInt(r.fill) > 80 ? 'text-red-500 font-black' : ''}>{r.fill}</span>
                                             </div>
-                                            <span className={parseInt(r.fill) > 80 ? 'text-red-500 font-black' : ''}>{r.fill}</span>
-                                        </div>
+                                        </td>
+                                        <td className="px-4 py-4">{r.feedback}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={14} className="py-8">
+                                        <NoDataView message="No bulk collection records found" illustration={BinIllustration} />
                                     </td>
-                                    <td className="px-4 py-4">{r.feedback}</td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>
-                {records.length === 0 && (
-                    <NoDataView message={loading ? "Searching records..." : "No bulk collection records found"} illustration={loading ? RefreshCw : BinIllustration} />
-                )}
 
                 {/* Pagination */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">

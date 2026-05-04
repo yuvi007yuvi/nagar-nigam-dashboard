@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { getAllowedModules } from '../services/userRoleService';
+import PageLoader from './shared/PageLoader';
 
 interface ProtectedRouteProps {
     userId: string;
@@ -66,11 +67,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ userId, requiredModule,
     }, [userId, requiredModule]);
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
+        return <PageLoader />;
     }
 
     // Redirect to first allowed module if available

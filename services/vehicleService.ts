@@ -1,52 +1,8 @@
 import { useState, useEffect } from 'react';
 
-// API Endpoints - Using absolute URLs for production
-const API_PRIMARY = 'https://oempowersupply.in/naturegreen.php?key=09C5E59F150AFA8481F39ADCF9405858&cmd=ALL,*';
-const API_SECONDARY = 'https://oempowersupply.in/naturegreen.php?key=162814E902A9896655663D59F9BE98D5&cmd=ALL,*';
-
-// Mock data for development/testing when API is unavailable
-const MOCK_VEHICLE_DATA: VehicleData[] = [
-    {
-        imei: '359671234567890',
-        name: 'Auto Tipper UP85AG0770',
-        dt_tracker: new Date().toISOString(),
-        lat: '27.4924',
-        lng: '77.6737',
-        altitude: '180',
-        angle: '45',
-        speed: '35'
-    },
-    {
-        imei: '359671234567891',
-        name: 'Auto Tipper UP85ET 7839',
-        dt_tracker: new Date().toISOString(),
-        lat: '27.5024',
-        lng: '77.6837',
-        altitude: '175',
-        angle: '90',
-        speed: '0'
-    },
-    {
-        imei: '359671234567892',
-        name: 'Refuse Compactor UP14PT7717',
-        dt_tracker: new Date().toISOString(),
-        lat: '27.4824',
-        lng: '77.6637',
-        altitude: '182',
-        angle: '180',
-        speed: '42'
-    },
-    {
-        imei: '359671234567893',
-        name: 'Auto Tipper UP85ET 7850',
-        dt_tracker: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-        lat: '27.5124',
-        lng: '77.6937',
-        altitude: '185',
-        angle: '270',
-        speed: '0'
-    }
-];
+// API Endpoints - Using proxied URLs to avoid CORS issues
+const API_PRIMARY = '/gps-api/naturegreen.php?key=09C5E59F150AFA8481F39ADCF9405858&cmd=ALL,*';
+const API_SECONDARY = '/gps-api/naturegreen.php?key=162814E902A9896655663D59F9BE98D5&cmd=ALL,*';
 
 export interface VehicleData {
     imei: string;
@@ -59,7 +15,7 @@ export interface VehicleData {
     speed: string;
 }
 
-export const fetchVehicleData = async (useMockData = true): Promise<VehicleData[]> => {
+export const fetchVehicleData = async (): Promise<VehicleData[]> => {
     try {
         console.log('Fetching vehicle data from:', API_PRIMARY);
 
@@ -122,23 +78,11 @@ export const fetchVehicleData = async (useMockData = true): Promise<VehicleData[
             console.warn('Response is not JSON. Content-Type:', contentType1);
             const text = await response1.text();
             console.warn('Response body (first 500 chars):', text.substring(0, 500));
-
-            // Return mock data if API returns non-JSON
-            if (useMockData) {
-                console.log('Using mock data as fallback');
-                return MOCK_VEHICLE_DATA;
-            }
             return [];
         }
     } catch (error: any) {
         console.error('Error fetching vehicle data:', error);
         console.error('Error details:', error.message);
-
-        // Return mock data on error (timeout, network issues, etc.)
-        if (useMockData) {
-            console.log('API unavailable, using mock data');
-            return MOCK_VEHICLE_DATA;
-        }
         return [];
     }
 };

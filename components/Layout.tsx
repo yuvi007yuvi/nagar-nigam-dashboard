@@ -70,8 +70,19 @@ const Layout: React.FC<LayoutProps> = ({ userId }) => {
                     userId={userId}
                 />
 
-                <main className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
-                    <Outlet />
+                <main className="p-4 sm:p-6 flex-1 overflow-y-auto custom-scrollbar">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={location.pathname}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            className="w-full"
+                        >
+                            <Outlet />
+                        </motion.div>
+                    </AnimatePresence>
                 </main>
             </div>
         </div>

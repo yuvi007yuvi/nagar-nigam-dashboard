@@ -18,6 +18,7 @@ import {
     PeopleIllustration,
     BinIllustration
 } from '../Illustrations';
+import { useData } from '../../services/DataContext';
 import PageHeader from '../shared/PageHeader';
 
 interface NoDataViewProps {
@@ -45,32 +46,42 @@ const NoDataView = ({ message = "No records found", illustration: Illustration =
 
 // --- Attendance Page ---
 const AttendancePage = () => {
+    const { attendanceRecords, loading } = useData();
+    const currentDate = new Date();
+    const currentMonthYear = `${currentDate.toLocaleString('default', { month: 'short' }).toUpperCase()} - ${currentDate.getFullYear()}`;
+
     // Stats for Top Cards
+    const stats = React.useMemo(() => {
+        const total = attendanceRecords.length || 0;
+        const present = attendanceRecords.filter(r => r.status === 'P').length;
+        const absent = attendanceRecords.filter(r => r.status === 'A').length;
+        const missed = attendanceRecords.filter(r => r.status === 'M').length;
+
+        const percentage = total > 0 ? ((present / total) * 100).toFixed(1) : '0.0';
+
+        return {
+            today: [
+                { label: 'Present', val: `${present}/${total}` },
+                { label: 'Absent', val: `${absent}/${total}` },
+                { label: 'Missed Punch', val: `${missed}` }
+            ],
+            percentage: `${percentage}%`
+        };
+    }, [attendanceRecords]);
+
     const attendanceStats = [
         {
             title: 'Today',
-            data: [{ label: 'Present', val: '142/150' }, { label: 'Absent', val: '5/150' }, { label: 'Missed Punch', val: '3' }],
+            data: stats.today,
             icon: CalendarCheck,
             color: 'text-purple-600 bg-purple-100'
         },
         {
-            title: 'Yesterday',
-            data: [{ label: 'Present', val: '138/150' }, { label: 'Absent', val: '8/150' }, { label: 'Missed Punch', val: '4' }],
-            icon: Clock,
-            color: 'text-pink-500 bg-pink-100'
-        },
-        {
             title: 'Till Month',
-            data: [{ label: 'Present', val: '94.2%' }, { label: 'Absent', val: '3.8%' }, { label: 'Missed Punch', val: '12' }],
+            data: [{ label: 'Present', val: stats.percentage }, { label: 'Absent', val: '-' }, { label: 'Missed Punch', val: '-' }],
             icon: Calendar,
             color: 'text-green-600 bg-green-100'
-        },
-        {
-            title: 'Previous Month',
-            data: [{ label: 'Present', val: '92.5%' }, { label: 'Absent', val: '4.2%' }, { label: 'Missed Punch', val: '15' }],
-            icon: Calendar,
-            color: 'text-blue-600 bg-blue-100'
-        },
+        }
     ];
 
     const AttendanceStatCard = ({ title, data, icon: Icon, color }: any) => (
@@ -89,25 +100,12 @@ const AttendancePage = () => {
                     </div>
                 ))}
             </div>
-            <div className="mt-4 pt-2 border-t border-gray-50 dark:border-gray-700 text-[10px] text-gray-400 dark:text-gray-500 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1">
-                View More <div className="w-3 h-3 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[8px]">@</div>
-            </div>
         </div>
     );
 
-    // Mock data for Table
-    const staffData = [
-        { id: '1', name: 'Rajesh Kumar', empId: 'EMP001', present: 22, absent: 2, missed: 1, statusPattern: 'PPPPAPPPPPMP', img: '' },
-        { id: '2', name: 'Suresh Singh', empId: 'EMP002', present: 20, absent: 4, missed: 0, statusPattern: 'PPPPAAPPPPAA', img: '' },
-        { id: '3', name: 'Amit Yadav', empId: 'EMP003', present: 24, absent: 0, missed: 1, statusPattern: 'PPPPPPPPPPPP', img: '' },
-        { id: '4', name: 'Priya Sharma', empId: 'EMP004', present: 18, absent: 6, missed: 1, statusPattern: 'AAAPPPPAAAPP', img: '' },
-        { id: '5', name: 'Vikram Mehta', empId: 'EMP005', present: 21, absent: 3, missed: 1, statusPattern: 'PMPPPPMMPPPP', img: '' },
-    ];
-
     // Helper to generate status grid
-    const getStatusForDay = (pattern: string, day: number) => {
-        // Just cycling through the pattern string for demo purposes
-        const char = pattern[day % pattern.length];
+    const getStatusForDay = (pattern: string = '', day: number) => {
+        const char = pattern[day % (pattern.length || 1)] || '-';
         if (char === 'P') return { label: 'P', color: 'bg-green-600' };
         if (char === 'A') return { label: 'A', color: 'bg-red-600' };
         if (char === 'M') return { label: 'M', color: 'bg-blue-600' };
@@ -128,7 +126,9 @@ const AttendancePage = () => {
             {/* Filter Header Section */}
             <div>
                 <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">Attendance Calender NOV - 2025</h3>
+                    <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                        Attendance Calendar {currentMonthYear}
+                    </h3>
                     <button className="flex items-center gap-1 bg-[#22c55e] text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-[#16a34a] shadow-sm">
                         <Download size={14} /> Export
                     </button>
@@ -138,7 +138,7 @@ const AttendancePage = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 w-full lg:w-auto flex-1">
                         {/* Date Picker Placeholder */}
                         <div className="relative">
-                            <input type="text" value="11/2025" readOnly className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded-lg px-3 py-2 focus:outline-none" />
+                            <input type="text" value={`${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`} readOnly className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded-lg px-3 py-2 focus:outline-none" />
                         </div>
                         <select className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-green-500 shadow-sm">
                             <option>Zone</option>
@@ -195,53 +195,46 @@ const AttendancePage = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {staffData.map((staff, idx) => (
-                                <tr key={staff.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                    <td className="px-4 py-3 text-center border-r border-gray-100 dark:border-gray-700"><span className="text-gray-400 text-xs">▶</span></td>
-                                    <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300 border-r border-gray-100 dark:border-gray-700">{idx + 1}</td>
-                                    <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700">
-                                        {staff.img ? (
-                                            <img src={staff.img} alt="emp" className="w-8 h-8 rounded-md object-cover shadow-sm" />
-                                        ) : (
-                                            <div className="w-8 h-8 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600"><User size={16} /></div>
-                                        )}
+                            {attendanceRecords.length > 0 ? (
+                                attendanceRecords.map((staff, idx) => (
+                                    <tr key={staff.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                        <td className="px-4 py-3 text-center border-r border-gray-100 dark:border-gray-700"><span className="text-gray-400 text-xs">▶</span></td>
+                                        <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300 border-r border-gray-100 dark:border-gray-700">{idx + 1}</td>
+                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700">
+                                            {staff.img ? (
+                                                <img src={staff.img} alt="emp" className="w-8 h-8 rounded-md object-cover shadow-sm" />
+                                            ) : (
+                                                <div className="w-8 h-8 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600"><User size={16} /></div>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs font-medium text-gray-700 dark:text-gray-200 border-r border-gray-100 dark:border-gray-700">{staff.name}</td>
+                                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-700">{staff.empId}</td>
+                                        <td className="px-2 py-3 text-xs text-center border-r border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300">{staff.present || 0}</td>
+                                        <td className="px-2 py-3 text-xs text-center border-r border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300">{staff.absent || 0}</td>
+                                        <td className="px-2 py-3 text-xs text-center border-r border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300">{staff.missed || 0}</td>
+                                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-700 whitespace-nowrap">
+                                            {currentMonthYear}
+                                        </td>
+                                        {/* Calendar Grid Cells */}
+                                        {[...Array(12)].map((_, i) => {
+                                            const status = getStatusForDay(staff.statusPattern, i);
+                                            return (
+                                                <td key={i} className="px-1 py-3 text-center border-r border-gray-100 dark:border-gray-700">
+                                                    <div className={`w-5 h-5 mx-auto flex items-center justify-center rounded text-[9px] font-bold text-white ${status.color}`}>
+                                                        {status.label}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={21} className="px-4 py-12">
+                                        <NoDataView message="No attendance records found in database" illustration={PeopleIllustration} />
                                     </td>
-                                    <td className="px-4 py-3 text-xs font-medium text-gray-700 dark:text-gray-200 border-r border-gray-100 dark:border-gray-700">{staff.name}</td>
-                                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-700">{staff.empId}</td>
-                                    <td className="px-2 py-3 text-xs text-center border-r border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300">{staff.present}</td>
-                                    <td className="px-2 py-3 text-xs text-center border-r border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300">{staff.absent}</td>
-                                    <td className="px-2 py-3 text-xs text-center border-r border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300">{staff.missed}</td>
-                                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-700 whitespace-nowrap">Nov-2025</td>
-                                    {/* Calendar Grid Cells */}
-                                    {[...Array(12)].map((_, i) => {
-                                        const status = getStatusForDay(staff.statusPattern, i);
-                                        return (
-                                            <td key={i} className="px-1 py-3 text-center border-r border-gray-100 dark:border-gray-700">
-                                                <div className={`w-5 h-5 mx-auto flex items-center justify-center rounded text-[9px] font-bold text-white ${status.color}`}>
-                                                    {status.label}
-                                                </div>
-                                            </td>
-                                        );
-                                    })}
                                 </tr>
-                            ))}
-                            {/* Total Summary Row */}
-                            <tr className="bg-gray-50 dark:bg-gray-700/30 font-bold text-xs text-gray-600 dark:text-gray-300 border-t border-gray-200 dark:border-gray-700">
-                                <td colSpan={9} className="px-4 py-3 text-right">Total Present</td>
-                                {[...Array(12)].map((_, i) => (
-                                    <td key={i} className="px-1 py-3 text-center border-l border-gray-200 dark:border-gray-700 text-[10px] text-gray-400 dark:text-gray-500">
-                                        0
-                                    </td>
-                                ))}
-                            </tr>
-                            <tr className="bg-gray-50 dark:bg-gray-700/30 font-bold text-xs text-gray-600 dark:text-gray-300">
-                                <td colSpan={9} className="px-4 py-3 text-right">Total Absent</td>
-                                {[...Array(12)].map((_, i) => (
-                                    <td key={i} className="px-1 py-3 text-center border-l border-gray-200 dark:border-gray-700 text-[10px] text-gray-400 dark:text-gray-500">
-                                        0
-                                    </td>
-                                ))}
-                            </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
