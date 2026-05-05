@@ -98,7 +98,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
   }, [isAccessDenied, navigate]);
 
   // Fetch vehicle data
-  const { vehicles, loading } = useVehicleData();
+  const { vehicles: liveVehicles, loading: liveLoading } = useVehicleData();
+  const [registeredVehicles, setRegisteredVehicles] = React.useState<any[]>([]);
+  const [isRegLoading, setIsRegLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchRegistered = async () => {
+      const { getAllAdminData } = await import('../services/databaseService');
+      const result = await getAllAdminData('vehicles');
+      if (result.success) {
+        setRegisteredVehicles(result.data);
+      }
+      setIsRegLoading(false);
+    };
+    fetchRegistered();
+  }, []);
+
+  const vehicles = useMemo(() => {
+    const registeredImeis = new Set(registeredVehicles.map(v => v.imei));
+    return liveVehicles.filter(v => registeredImeis.has(v.imei));
+  }, [liveVehicles, registeredVehicles]);
+
+  const loading = liveLoading || isRegLoading;
 
   // Calculate vehicle statistics
   const vehicleStats = useMemo(() => {

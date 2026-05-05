@@ -10,6 +10,9 @@ import {
     Map as MapIcon, List, PieChart
 } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
+import KMLLayers from '../shared/KMLLayers';
+import MapSettingsOverlay from '../shared/MapSettingsOverlay';
+
 import { getAuth } from 'firebase/auth';
 import { getPOIs, getCoverageStats, POI, getRouteData, getWardRoads, getWardRoutes } from '../../services/poiService';
 import { NoDataView } from '../Pages';
@@ -170,6 +173,7 @@ const POIMonitoringPage = () => {
     const [routePath, setRoutePath] = useState<any>(null);
     const [wardRoads, setWardRoads] = useState<any[]>([]);
     const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
+    const [showKMLLayers, setShowKMLLayers] = useState(false);
     const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
 
     useEffect(() => {
@@ -618,24 +622,15 @@ const POIMonitoringPage = () => {
                                 ))}
                             </MapContainer>
 
-                            <div className="absolute top-6 right-6 z-[1000] flex flex-col items-end gap-3">
-                                <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md px-4 py-2 rounded-xl shadow-xl border border-white/20 flex items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse ring-4 ring-emerald-500/20"></div>
-                                        <span className="text-[11px] font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest">Live</span>
-                                    </div>
-                                    <div className="h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">Switch Map</span>
-                                        <div
-                                            onClick={() => setMapType(mapType === 'street' ? 'satellite' : 'street')}
-                                            className={`w - 8 h - 4 ${mapType === 'satellite' ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'} rounded - full relative cursor - pointer transition - colors group`}
-                                        >
-                                            <div className={`absolute top - 1 w - 2 h - 2 bg - white rounded - full transition - all ${mapType === 'satellite' ? 'left-5' : 'left-1'} `}></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <MapSettingsOverlay 
+                                mapType={mapType}
+                                setMapType={setMapType}
+                                showKMLLayers={showKMLLayers}
+                                setShowKMLLayers={setShowKMLLayers}
+                                position="top-right"
+                            />
+
+
 
                             <div className="absolute bottom-6 left-6 z-[1000] bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-5 rounded-[1.5rem] shadow-2xl border border-white/20 min-w-[160px]">
                                 <h4 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">Coverage Legend</h4>

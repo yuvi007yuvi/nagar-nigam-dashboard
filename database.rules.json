@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "locations": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$imei": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "sync_master": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}

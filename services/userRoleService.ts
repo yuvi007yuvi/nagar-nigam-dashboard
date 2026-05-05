@@ -23,7 +23,8 @@ export const ALL_MODULES = [
   'Roles',
   'POI Monitoring',
   'Settings',
-  'Vehicle History'
+  'Vehicle History',
+  'Vehicle Master'
 ];
 
 // Default permissions for roles
@@ -150,9 +151,11 @@ export const initializeDefaultRoles = async () => {
       );
       console.log('Initialized Admin role');
     } else {
-      // Check if Settings or Vehicle History is missing from Admin role and update if needed
+      // Check if Settings, Vehicle History or Vehicle Master is missing from Admin role and update if needed
       const adminData = adminSnap.data() as Role;
-      if (!adminData.modules.includes('Settings') || !adminData.modules.includes('Vehicle History')) {
+      if (!adminData.modules.includes('Settings') || 
+          !adminData.modules.includes('Vehicle History') || 
+          !adminData.modules.includes('Vehicle Master')) {
         await updateRole(
           ROLES.ADMIN,
           'Administrator',

@@ -10,6 +10,8 @@ import { initializeDefaultRoles, assignDefaultRoleIfNeeded } from './services/us
 import { storeUserLogin } from './services/userManagementService';
 import { ThemeProvider } from './services/ThemeContext';
 import PageLoader from './components/shared/PageLoader';
+import { GPSSyncService } from './services/GPSSyncService';
+
 
 // Lazy load page components
 const CustomersPage = lazy(() => import('./components/pages/CustomersPage'));
@@ -30,7 +32,10 @@ const SettingsPage = lazy(() => import('./components/pages/SettingsPage'));
 const POIMonitoringPage = lazy(() => import('./components/pages/POIMonitoringPage'));
 const LoginPage = lazy(() => import('./components/auth/LoginPage'));
 const HomePage = lazy(() => import('./components/HomePage'));
+const MapLayersPage = lazy(() => import('./components/pages/MapLayersPage'));
 const VehicleHistoryPage = lazy(() => import('./components/pages/VehicleHistoryPage'));
+const VehicleMasterPage = lazy(() => import('./components/pages/VehicleMasterPage'));
+
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -75,7 +80,9 @@ function App() {
   return (
     <DataProvider userId={user?.uid}>
       <ThemeProvider>
+        {user && <GPSSyncService />}
         <Suspense fallback={<PageLoader />}>
+
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={!user ? <HomePage /> : <Navigate to="/dashboard" />} />
@@ -172,6 +179,17 @@ function App() {
                     <VehicleHistoryPage />
                   </ProtectedRoute>
                 } />
+                <Route path="/map-layers" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <MapLayersPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/vehicle-master" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <VehicleMasterPage />
+                  </ProtectedRoute>
+                } />
+
                 <Route path="/citizen" element={<CitizenPage currentUser={user} />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Route>

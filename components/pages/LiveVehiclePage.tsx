@@ -13,6 +13,8 @@ import {
     CalendarCheck, Edit, MessageSquare, RefreshCw, X
 } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
+import KMLLayers from '../shared/KMLLayers';
+import MapSettingsOverlay from '../shared/MapSettingsOverlay';
 import { getAuth } from 'firebase/auth';
 import { useVehicleData } from '../../services/vehicleService';
 import vehicleTopDown from '../images/top-down-vehicle.png';
@@ -64,7 +66,28 @@ const getVehicleIcon = (speed: string | number, angle: string | number = 0, name
 
 // --- Live Vehicle Page ---
 const LiveVehiclePage = () => {
-    const { vehicles, loading, error, refetch } = useVehicleData();
+    const { vehicles: liveVehicles, loading: liveLoading, error, refetch } = useVehicleData();
+    const [registeredVehicles, setRegisteredVehicles] = useState<any[]>([]);
+    const [isRegLoading, setIsRegLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchRegistered = async () => {
+            const { getAllAdminData } = await import('../../services/databaseService');
+            const result = await getAllAdminData('vehicles');
+            if (result.success) {
+                setRegisteredVehicles(result.data);
+            }
+            setIsRegLoading(false);
+        };
+        fetchRegistered();
+    }, []);
+
+    const vehicles = useMemo(() => {
+        const registeredImeis = new Set(registeredVehicles.map(v => v.imei));
+        return liveVehicles.filter(v => registeredImeis.has(v.imei));
+    }, [liveVehicles, registeredVehicles]);
+
+    const loading = liveLoading || isRegLoading;
     const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
     const [generatingReport, setGeneratingReport] = useState<string | null>(null);
     const [showReport, setShowReport] = useState(false);
@@ -78,6 +101,9 @@ const LiveVehiclePage = () => {
         startDate: '2026-03-07',
         endDate: '2026-03-07'
     });
+
+    const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
+    const [showKMLLayers, setShowKMLLayers] = useState(false);
 
     const [user, setUser] = useState<any>(null);
     useEffect(() => {
@@ -306,9 +332,14 @@ const LiveVehiclePage = () => {
                         style={{ height: '100%', width: '100%' }}
                     >
                         <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            attribution={mapType === 'street' ? '&copy; OpenStreetMap contributors' : '&copy; Google Maps'}
+                            url={mapType === 'street'
+                                ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                                : 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
+                            }
                         />
+                        <KMLLayers visible={showKMLLayers} />
+
                         {stats.detailedVehicles.map((vehicle, idx) => (
                             <Marker
                                 key={`${vehicle.imei}-${idx}`}
@@ -335,11 +366,15 @@ const LiveVehiclePage = () => {
                         ))}
                     </MapContainer>
 
-                    {/* Map Controls Overlay */}
-                    <div className="absolute top-4 right-4 z-[1000] bg-white dark:bg-gray-800 px-3 py-2 rounded shadow-md border border-gray-200 dark:border-gray-700 flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Live Tracking</span>
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    </div>
+                    <MapSettingsOverlay 
+                        mapType={mapType}
+                        setMapType={setMapType}
+                        showKMLLayers={showKMLLayers}
+                        setShowKMLLayers={setShowKMLLayers}
+                        position="top-right"
+                    />
+
+
                 </div>
             </div>
             {/* Report Modal - Matches Reference Screenshot */}

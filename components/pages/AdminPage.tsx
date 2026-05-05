@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ROLES } from '../../services/userRoleService';
-import { User, Shield, Users, Plus, RefreshCw, Settings, Database, Bell, BarChart3, Lock, Key, Monitor, Truck } from 'lucide-react';
+import { User, Shield, Users, Plus, RefreshCw, Settings, Database, Bell, BarChart3, Lock, Key, Monitor, Truck, Map as MapIcon } from 'lucide-react';
+
 import PageHeader from '../shared/PageHeader';
 
 // --- Admin Page ---
@@ -61,7 +62,23 @@ const AdminPage = ({ currentUser }: { currentUser: any }) => {
             icon: Truck,
             color: 'bg-indigo-600',
             path: '/bulk-collection'
+        },
+        {
+            title: 'Map Layers',
+            description: 'Upload and manage KML boundary files',
+            icon: MapIcon,
+            color: 'bg-emerald-500',
+            path: '/map-layers'
+        },
+        {
+            title: 'Vehicle Master',
+            description: 'Manage vehicle fleet, assignments and IMEIs',
+            icon: Truck,
+            color: 'bg-orange-500',
+            path: '/vehicle-master'
         }
+
+
     ];
 
     // Clear messages after 5 seconds

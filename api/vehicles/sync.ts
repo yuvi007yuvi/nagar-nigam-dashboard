@@ -50,16 +50,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ message: 'No data to sync' });
     }
 
-    // Save to Firestore
-    const historyCol = collection(db, 'vehicle_history');
-    const batch = snapshots.map(s => addDoc(historyCol, s));
-    await Promise.all(batch);
+    // Save to Firestore as a single snapshot document
+    const snapshotsCol = collection(db, 'vehicle_history_snapshots');
+    await addDoc(snapshotsCol, {
+      day: new Date().toISOString().split('T')[0],
+      timestamp: new Date().toISOString(),
+      vehicles: snapshots, // Save all as array
+      createdAt: serverTimestamp()
+    });
 
     return res.status(200).json({ 
       message: 'Sync successful', 
       count: snapshots.length,
       timestamp: new Date().toISOString()
     });
+
 
   } catch (error: any) {
     console.error('Sync Error:', error);
