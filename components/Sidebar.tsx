@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Wallet, Fuel, Scale,
   Trash2, Map, CalendarCheck, AlertCircle,
   Settings, BarChart3, X, ChevronRight, RefreshCw, User,
-  LogOut, HelpCircle, Shield, Home
+  LogOut, HelpCircle, Shield, Home, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAllowedModules } from '../services/userRoleService';
@@ -65,6 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, setIsCollapsed, 
     { name: 'Weighment', icon: Scale, path: '/weighment' },
     { name: 'Bulk Collection', icon: Trash2, path: '/bulk-collection' },
     { name: 'Live Vehicle', icon: Map, path: '/live-vehicle' },
+    { name: 'Vehicle History', icon: History, path: '/vehicle-history' },
     { name: 'Attendance', icon: CalendarCheck, path: '/attendance' },
     { name: 'Complaint', icon: AlertCircle, path: '/complaint' },
     { name: 'Admin', icon: Shield, path: '/admin' },
@@ -75,7 +76,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, setIsCollapsed, 
     { name: 'Profile', icon: User, path: '/profile' }
   ];
 
-  const menuItems = allMenuItems.filter(item => allowedModules.includes(item.name));
+  const menuItems = allMenuItems.filter(item => 
+    allowedModules.map(m => m.trim().toLowerCase()).includes(item.name.trim().toLowerCase())
+  );
 
   const handleNavigate = (path: string) => {
     navigate(path);

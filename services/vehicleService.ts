@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { db } from './firebaseConfig';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 // API Endpoints - Using proxied URLs to avoid CORS issues
 const API_PRIMARY = '/gps-api/naturegreen.php?key=09C5E59F150AFA8481F39ADCF9405858&cmd=ALL,*';
@@ -88,16 +90,52 @@ export const fetchVehicleData = async (): Promise<VehicleData[]> => {
 };
 
 // Hook for easy usage
-export const useVehicleData = (refreshInterval = 30000) => {
+
+// Function to save history snapshots to Firestore
+export const saveHistorySnapshot = async (vehicles: VehicleData[]) => {
+    if (!vehicles || vehicles.length === 0) return;
+
+    try {
+        const historyCol = collection(db, 'vehicle_history');
+        const day = new Date().toISOString().split('T')[0];
+        const timestamp = new Date().toISOString();
+
+        // Save each vehicle as a document
+        const promises = vehicles.map(v => 
+            addDoc(historyCol, {
+                ...v,
+                day,
+                timestamp,
+                createdAt: serverTimestamp()
+            })
+        );
+
+        await Promise.all(promises);
+        console.log(`Saved history snapshot for ${vehicles.length} vehicles`);
+    } catch (error) {
+        console.error('Error saving history snapshot:', error);
+    }
+};
+
+// Hook for easy usage
+export const useVehicleData = (refreshInterval = 5000) => {
     const [vehicles, setVehicles] = useState<VehicleData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [lastSnapshot, setLastSnapshot] = useState<number>(0);
 
     const fetchData = async () => {
         try {
             const data = await fetchVehicleData();
             setVehicles(data);
             setLoading(false);
+
+            // Trigger history snapshot every 5 seconds (5,000 ms) for high-resolution tracking
+            const now = Date.now();
+            if (now - lastSnapshot > 5000) {
+                saveHistorySnapshot(data);
+                setLastSnapshot(now);
+            }
         } catch (err: any) {
             setError(err.message);
             setLoading(false);
@@ -108,7 +146,7 @@ export const useVehicleData = (refreshInterval = 30000) => {
         fetchData();
         const interval = setInterval(fetchData, refreshInterval);
         return () => clearInterval(interval);
-    }, [refreshInterval]);
+    }, [refreshInterval, lastSnapshot]);
 
     return { vehicles, loading, error, refetch: fetchData };
 };

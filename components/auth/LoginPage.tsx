@@ -69,8 +69,7 @@ const LoginPage = () => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-teal-400/20 blur-[120px] animate-pulse" style={{ animationDuration: '10s', animationDelay: '1s' }}></div>
         <div className="absolute top-[40%] left-[40%] w-[40%] h-[40%] rounded-full bg-cyan-400/10 blur-[100px] animate-pulse" style={{ animationDuration: '12s', animationDelay: '2s' }}></div>
 
-        {/* Grid Pattern Overlay */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-40 mix-blend-soft-light"></div>
+        <div className="absolute top-[40%] left-[40%] w-[40%] h-[40%] rounded-full bg-cyan-400/10 blur-[100px] animate-pulse" style={{ animationDuration: '12s', animationDelay: '2s' }}></div>
       </div>
 
       <motion.div

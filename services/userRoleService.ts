@@ -22,7 +22,8 @@ export const ALL_MODULES = [
   'KPI Dashboard',
   'Roles',
   'POI Monitoring',
-  'Settings'
+  'Settings',
+  'Vehicle History'
 ];
 
 // Default permissions for roles
@@ -149,16 +150,16 @@ export const initializeDefaultRoles = async () => {
       );
       console.log('Initialized Admin role');
     } else {
-      // Check if Settings is missing from Admin role and update if needed
+      // Check if Settings or Vehicle History is missing from Admin role and update if needed
       const adminData = adminSnap.data() as Role;
-      if (!adminData.modules.includes('Settings')) {
+      if (!adminData.modules.includes('Settings') || !adminData.modules.includes('Vehicle History')) {
         await updateRole(
           ROLES.ADMIN,
           'Administrator',
           DEFAULT_ROLE_PERMISSIONS.admin,
           'Full access to all modules'
         );
-        console.log('Updated Admin role with Settings module');
+        console.log('Updated Admin role with new modules');
       }
     }
 

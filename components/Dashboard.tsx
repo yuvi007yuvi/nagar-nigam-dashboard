@@ -263,74 +263,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
         </motion.div>
       )}
 
-      {/* Top Actions */}
-      <motion.div variants={itemVariants} className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-gray-800 border border-indigo-100 dark:border-indigo-800 shadow-lg shadow-indigo-500/5 rounded-2xl relative group overflow-hidden">
-            <LayoutDashboard size={22} className="text-indigo-600 dark:text-indigo-400 relative z-10" />
-          </div>
 
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tighter font-display leading-tight">
-                Dashboard Overview
-              </h2>
-              <div className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-800 border border-emerald-100 dark:border-emerald-900/50 rounded-lg shadow-sm">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                </span>
-                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Live</span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
-              <p className="text-xs font-bold text-gray-400 dark:text-gray-500">
-                Welcome {userName}, {getGreeting()}!
-              </p>
-              <div className="flex items-center gap-1.5 text-[10px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-widest bg-indigo-50/30 dark:bg-indigo-900/10 px-1.5 py-0.5 rounded-md border border-indigo-100/30">
-                <Clock size={10} />
-                {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto items-stretch sm:items-center">
-          <WeatherWidget />
-          {onGenerateInsight && (
-            <motion.button
-              onClick={onGenerateInsight}
-              whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(124, 58, 237, 0.4)" }}
-              whileTap={{ scale: 0.95 }}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-4 rounded-2xl shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all text-sm font-bold border border-white/10"
-            >
-              <Sparkles size={18} className="animate-pulse" />
-              AI Daily Briefing
-            </motion.button>
-          )}
-        </div>
-      </motion.div>
-
-      {/* AI Insight Card (If generated) */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-6">
-        <div className="glass p-6 rounded-3xl border border-indigo-100/50 dark:border-indigo-900/30 bg-gradient-to-br from-indigo-50/50 to-white/50 dark:from-indigo-950/20 dark:to-gray-900/50 shadow-2xl relative overflow-hidden group">
-          <div className="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors duration-1000" />
-          <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-            <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-indigo-50 dark:border-indigo-900 group-hover:scale-110 transition-transform duration-500">
-              <Sparkles className="text-indigo-600 dark:text-indigo-400" size={32} />
-            </div>
-            <div className="flex-1 text-center md:text-left">
-              <h3 className="text-xl font-black text-gray-900 dark:text-white font-display mb-2">Smart Operational Insights</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-2xl">
-                Our AI engine has analyzed today's data. Vehicle efficiency is up by <span className="text-emerald-600 font-bold">12.4%</span> across Zone 2. 
-                However, Ward 08 is showing a <span className="text-rose-500 font-bold">15% delay</span> in bulk collection cycles. 
-                <span className="font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline ml-1">View full recommendations →</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </motion.div>
 
       {/* Section: Quick Actions */}
       <div className="space-y-3">

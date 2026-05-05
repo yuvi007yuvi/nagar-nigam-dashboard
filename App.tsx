@@ -30,6 +30,7 @@ const SettingsPage = lazy(() => import('./components/pages/SettingsPage'));
 const POIMonitoringPage = lazy(() => import('./components/pages/POIMonitoringPage'));
 const LoginPage = lazy(() => import('./components/auth/LoginPage'));
 const HomePage = lazy(() => import('./components/HomePage'));
+const VehicleHistoryPage = lazy(() => import('./components/pages/VehicleHistoryPage'));
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -164,6 +165,11 @@ function App() {
                 <Route path="/settings" element={
                   <ProtectedRoute userId={user?.uid || ''} requiredModule="Settings">
                     <SettingsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/vehicle-history" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Live Vehicle">
+                    <VehicleHistoryPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/citizen" element={<CitizenPage currentUser={user} />} />

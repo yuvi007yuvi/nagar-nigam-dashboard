@@ -1,5 +1,15 @@
 {
+  "crons": [
+    {
+      "path": "/api/vehicles/sync",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
     {
       "source": "/gps-api/(.*)",
       "destination": "https://oempowersupply.in/$1"
