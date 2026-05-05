@@ -7,11 +7,12 @@ import {
   Wallet, Fuel, Truck,
   CalendarCheck, AlertTriangle, Sparkles,
   Recycle, IndianRupee, BarChart3, Activity, Map as MapIcon,
-  LayoutDashboard, Clock
+  LayoutDashboard, Clock, UserPlus, FileText
 } from 'lucide-react';
 import {
   ColoredStatCard, UserChargeWidget, VehicleStatusWidget,
-  ComplaintChart, BulkCollectionChart, POIWidget, CustomerChart
+  ComplaintChart, BulkCollectionChart, POIWidget, CustomerChart,
+  WeatherWidget, QuickActionCard, TopWardsWidget
 } from './Widgets';
 import { useVehicleData } from '../services/vehicleService';
 import { useData } from '../services/DataContext';
@@ -295,20 +296,86 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
           </div>
         </div>
 
-        <div className="flex gap-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto items-stretch sm:items-center">
+          <WeatherWidget />
           {onGenerateInsight && (
             <motion.button
               onClick={onGenerateInsight}
               whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(124, 58, 237, 0.4)" }}
               whileTap={{ scale: 0.95 }}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-3 rounded-xl shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all text-sm font-bold border border-white/10"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-4 rounded-2xl shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all text-sm font-bold border border-white/10"
             >
               <Sparkles size={18} className="animate-pulse" />
-              Generate AI Insights
+              AI Daily Briefing
             </motion.button>
           )}
         </div>
       </motion.div>
+
+      {/* AI Insight Card (If generated) */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-6">
+        <div className="glass p-6 rounded-3xl border border-indigo-100/50 dark:border-indigo-900/30 bg-gradient-to-br from-indigo-50/50 to-white/50 dark:from-indigo-950/20 dark:to-gray-900/50 shadow-2xl relative overflow-hidden group">
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors duration-1000" />
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+            <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-indigo-50 dark:border-indigo-900 group-hover:scale-110 transition-transform duration-500">
+              <Sparkles className="text-indigo-600 dark:text-indigo-400" size={32} />
+            </div>
+            <div className="flex-1 text-center md:text-left">
+              <h3 className="text-xl font-black text-gray-900 dark:text-white font-display mb-2">Smart Operational Insights</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-2xl">
+                Our AI engine has analyzed today's data. Vehicle efficiency is up by <span className="text-emerald-600 font-bold">12.4%</span> across Zone 2. 
+                However, Ward 08 is showing a <span className="text-rose-500 font-bold">15% delay</span> in bulk collection cycles. 
+                <span className="font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline ml-1">View full recommendations →</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Section: Quick Actions */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest flex items-center gap-2">
+          <Activity size={16} className="text-indigo-500" />
+          Quick Actions
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+          <QuickActionCard 
+            title="Add Customer" 
+            icon={UserPlus} 
+            color="from-blue-500 to-indigo-600" 
+            onClick={() => navigate('/customers')}
+          />
+          <QuickActionCard 
+            title="Log Fuel" 
+            icon={Fuel} 
+            color="from-orange-500 to-red-600" 
+            onClick={() => navigate('/fuel')}
+          />
+          <QuickActionCard 
+            title="Record Attendance" 
+            icon={CalendarCheck} 
+            color="from-emerald-500 to-teal-600" 
+            onClick={() => navigate('/attendance')}
+          />
+          <QuickActionCard 
+            title="New Complaint" 
+            icon={AlertTriangle} 
+            color="from-rose-500 to-pink-600" 
+            onClick={() => navigate('/complaint')}
+          />
+          <QuickActionCard 
+            title="Bulk Entry" 
+            icon={Truck} 
+            color="from-amber-500 to-yellow-600" 
+            onClick={() => navigate('/bulk-collection')}
+          />
+          <QuickActionCard 
+            title="Export Report" 
+            icon={FileText} 
+            color="from-gray-700 to-gray-900" 
+          />
+        </div>
+      </div>
 
       {/* Section: Key Metrics */}
       <div className="space-y-3">
@@ -375,6 +442,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
           </div>
           <div className="h-[240px]">
             <CustomerChart data={customerSummary} />
+          </div>
+          <div className="h-[240px] lg:col-span-1">
+            <TopWardsWidget />
           </div>
         </div>
       </div>

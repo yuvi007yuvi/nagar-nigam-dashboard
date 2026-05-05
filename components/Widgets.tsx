@@ -10,6 +10,11 @@ import {
   PeopleIllustration,
   BinIllustration
 } from './Illustrations';
+import { 
+  Cloud, Sun, CloudRain, Thermometer, 
+  Plus, FileText, UserPlus, MapPin, 
+  ChevronRight, TrendingUp, Award, Zap
+} from 'lucide-react';
 
 // --- Colored Stat Card ---
 interface ColoredStatCardProps {
@@ -458,6 +463,118 @@ export const CustomerChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
       ) : (
         <EmptyState illustration={PeopleIllustration} message="No customer data" />
       )}
+    </WidgetContainer>
+  );
+};
+
+// --- Weather Widget ---
+export const WeatherWidget: React.FC = () => {
+  // Mock weather data - in a real app this would come from an API
+  const weather = {
+    temp: 32,
+    condition: 'Sunny',
+    location: 'Mathura, UP',
+    humidity: '45%',
+    wind: '12 km/h',
+    icon: Sun
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="glass p-4 rounded-2xl border border-white/40 shadow-xl flex items-center gap-4 bg-gradient-to-br from-white/80 to-blue-50/50 dark:from-gray-800/80 dark:to-blue-900/20 backdrop-blur-xl"
+    >
+      <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-2xl text-amber-600 dark:text-amber-400 shadow-inner">
+        <weather.icon size={28} className="animate-pulse" />
+      </div>
+      <div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-2xl font-black text-gray-800 dark:text-white font-display">{weather.temp}°C</span>
+          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md border border-amber-100/50">
+            {weather.condition}
+          </span>
+        </div>
+        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter flex items-center gap-1 mt-0.5">
+          <MapPin size={10} />
+          {weather.location}
+        </p>
+      </div>
+      <div className="ml-auto flex flex-col gap-1 items-end border-l border-gray-200 dark:border-gray-700 pl-4">
+        <div className="flex items-center gap-1 text-[9px] font-bold text-gray-500">
+          <Thermometer size={10} />
+          {weather.humidity} Hum
+        </div>
+        <div className="flex items-center gap-1 text-[9px] font-bold text-gray-500">
+          <Zap size={10} />
+          {weather.wind} Wind
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// --- Quick Action Card ---
+export const QuickActionCard: React.FC<{ title: string, icon: React.ElementType, color: string, onClick?: () => void }> = ({ title, icon: Icon, color, onClick }) => {
+  return (
+    <motion.button
+      whileHover={{ scale: 1.05, y: -2 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center p-4 rounded-2xl border border-white/40 shadow-lg transition-all group relative overflow-hidden h-full w-full bg-white dark:bg-gray-800`}
+    >
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 bg-gradient-to-br ${color} transition-opacity`} />
+      <div className={`p-3 rounded-xl mb-3 ${color.replace('from-', 'bg-').replace('to-', '').split(' ')[0]} bg-opacity-10 text-gray-700 dark:text-gray-200 group-hover:scale-110 transition-transform shadow-inner`}>
+        <Icon size={24} />
+      </div>
+      <span className="text-[10px] font-black text-gray-600 dark:text-gray-300 uppercase tracking-widest text-center leading-tight">
+        {title}
+      </span>
+      <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <ChevronRight size={14} className="text-gray-400" />
+      </div>
+    </motion.button>
+  );
+};
+
+// --- Top Performing Wards Widget ---
+export const TopWardsWidget: React.FC = () => {
+  const wards = [
+    { name: 'Ward 12', score: 98, trend: 'up' },
+    { name: 'Ward 05', score: 95, trend: 'up' },
+    { name: 'Ward 21', score: 92, trend: 'down' },
+  ];
+
+  return (
+    <WidgetContainer>
+      <div className="flex items-center justify-between mb-4 relative z-10">
+        <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2 font-display">
+          <Award size={18} className="text-yellow-500" />
+          Top Performing Wards
+        </h3>
+        <TrendingUp size={16} className="text-emerald-500" />
+      </div>
+      
+      <div className="space-y-3 relative z-10">
+        {wards.map((ward, idx) => (
+          <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-3">
+              <span className={`w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-black ${idx === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>
+                {idx + 1}
+              </span>
+              <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{ward.name}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black text-emerald-600">{ward.score}%</span>
+              <div className={`w-1.5 h-1.5 rounded-full ${ward.trend === 'up' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      <button className="mt-auto pt-4 text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline flex items-center gap-1">
+        Full Rankings <ArrowRight size={10} />
+      </button>
     </WidgetContainer>
   );
 };
