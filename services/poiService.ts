@@ -10,12 +10,46 @@ export interface POI {
     ownerName: string;
     houseNumber: string;
     status: 'covered' | 'pending';
-    lastCovered?: any; // Changed from Timestamp to any to avoid strict type issues in mock
+    lastCovered?: any;
     vehicleId?: string;
+    imageUrl?: string;
 }
 
 export const getPOIs = async (ward?: string, zone?: string) => {
     try {
+        // Attempt to fetch from Firestore
+        const poiCollection = collection(db, 'households');
+        let q = query(poiCollection);
+        
+        if (ward && ward !== 'All') {
+            q = query(poiCollection, where('ward', '==', ward));
+        }
+        
+        const querySnapshot = await getDocs(q);
+        const firestorePOIs: POI[] = [];
+        
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            firestorePOIs.push({
+                id: doc.id,
+                lat: data.lat,
+                lng: data.lng,
+                address: data.address,
+                ward: data.ward,
+                ownerName: data.ownerName,
+                houseNumber: data.houseNumber,
+                status: data.status,
+                lastCovered: data.lastCovered,
+                vehicleId: data.vehicleId,
+                imageUrl: data.imageUrl
+            });
+        });
+
+        if (firestorePOIs.length > 0) {
+            return { success: true, data: firestorePOIs };
+        }
+
+        // Fallback to mock data if Firestore is empty or fails
         const mockPOIs: POI[] = [];
 
         // Ward 35 - Bankhandi Area
@@ -34,7 +68,8 @@ export const getPOIs = async (ward?: string, zone?: string) => {
                     ownerName: `Owner ${id}`, houseNumber: `H-${100 + id}`,
                     status: id > 45 ? 'pending' : 'covered',
                     lastCovered: id <= 45 ? Timestamp.now() : undefined,
-                    vehicleId: 'UP85AG0770'
+                    vehicleId: 'UP85AG0770',
+                    imageUrl: `https://picsum.photos/seed/h${id}/200/200`
                 });
             }
         });
@@ -50,7 +85,8 @@ export const getPOIs = async (ward?: string, zone?: string) => {
                     lng: node[1] + (Math.random() * 0.0003),
                     address: `Building ${id}, Holi Gali, Mathura`, ward: '65-Holi Gali',
                     ownerName: `Customer ${id}`, houseNumber: `R-${id}`, status: 'covered',
-                    lastCovered: Timestamp.now(), vehicleId: 'UP85ET 7839'
+                    lastCovered: Timestamp.now(), vehicleId: 'UP85ET 7839',
+                    imageUrl: `https://picsum.photos/seed/h65${id}/200/200`
                 });
             }
         });

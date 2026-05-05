@@ -8,7 +8,7 @@ import {
     Home, Briefcase, Building2, Factory, Layers,
     IndianRupee, Gauge, Droplets, TrendingUp,
     Scale, Truck, WifiOff, PlayCircle, OctagonAlert, PauseCircle, StopCircle,
-    CalendarCheck, Edit, MessageSquare, RefreshCw
+    CalendarCheck, Edit, MessageSquare, RefreshCw, Camera
 } from 'lucide-react';
 import {
     TruckIllustration,
@@ -179,9 +179,31 @@ const BulkCollectionPage = () => {
                                         <td className="px-4 py-4 border-r dark:border-gray-700">{r.supervisor}</td>
                                         <td className="px-4 py-4 border-r dark:border-gray-700 tracking-tighter">{r.sid}</td>
                                         <td className="px-4 py-4 border-r dark:border-gray-700">{r.btime}</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700 text-blue-500 underline cursor-pointer">{r.bimg}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700">
+                                            {r.bimg ? (
+                                                <div className="w-12 h-8 rounded bg-gray-100 overflow-hidden cursor-zoom-in group/img relative">
+                                                    <img src={r.bimg} alt="Before" className="w-full h-full object-cover transition-transform group-hover/img:scale-125" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
+                                                        <Camera size={12} className="text-white" />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <span className="text-gray-400">N/A</span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-4 border-r dark:border-gray-700">{r.atime}</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700 text-blue-500 underline cursor-pointer">{r.aimg}</td>
+                                        <td className="px-4 py-4 border-r dark:border-gray-700">
+                                            {r.aimg ? (
+                                                <div className="w-12 h-8 rounded bg-gray-100 overflow-hidden cursor-zoom-in group/img relative">
+                                                    <img src={r.aimg} alt="After" className="w-full h-full object-cover transition-transform group-hover/img:scale-125" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
+                                                        <Camera size={12} className="text-white" />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <span className="text-gray-400">N/A</span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-4 border-r dark:border-gray-700">{r.ward}</td>
                                         <td className="px-4 py-4 border-r dark:border-gray-700">
                                             <div className="flex items-center gap-2">

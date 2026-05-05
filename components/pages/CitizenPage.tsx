@@ -4,7 +4,6 @@ import { User, Mail, Phone, MapPin, Calendar, IdCard, Home, CreditCard, Search, 
 import PageHeader from '../shared/PageHeader';
 
 import { useData } from '../../services/DataContext';
-import PageHeader from '../shared/PageHeader';
 
 const CitizenPage = ({ currentUser }: { currentUser: any }) => {
     const { complaints: allComplaints, userCharges: allPayments, customers, loading: dataLoading } = useData();

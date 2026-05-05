@@ -29,17 +29,17 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const getPinIcon = (color: string) => {
     const svg = `
-    < svg width = "20" height = "28" viewBox = "0 0 30 40" fill = "none" xmlns = "http://www.w3.org/2000/svg" >
-            <path d="M15 0C6.71573 0 0 6.71573 0 15C0 26.25 15 40 15 40C15 40 30 26.25 30 15C30 6.71573 23.2843 0 15 0Z" fill="${color}" stroke="black" stroke-width="2"/>
-            <circle cx="15" cy="15" r="5" fill="black"/>
-        </svg >
+        <svg width="30" height="40" viewBox="0 0 30 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 0C6.71573 0 0 6.71573 0 15C0 26.25 15 40 15 40C15 40 30 26.25 30 15C30 6.71573 23.2843 0 15 0Z" fill="${color}" stroke="white" stroke-width="2"/>
+            <circle cx="15" cy="15" r="5" fill="white"/>
+        </svg>
     `;
     return L.divIcon({
         html: svg,
         className: 'custom-pin-icon',
-        iconSize: [20, 28],
-        iconAnchor: [10, 28],
-        popupAnchor: [0, -28]
+        iconSize: [30, 40],
+        iconAnchor: [15, 40],
+        popupAnchor: [0, -40]
     });
 };
 
@@ -578,26 +578,42 @@ const POIMonitoringPage = () => {
                                         icon={getPinIcon(poi.status === 'covered' ? '#10b981' : '#ef4444')}
                                     >
                                         <Popup>
-                                            <div className="p-2 min-w-[200px]">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <h4 className="font-bold text-gray-800">{poi.ownerName}</h4>
-                                                    <span className={`px - 2 py - 0.5 rounded - full text - [10px] font - bold ${poi.status === 'covered' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                                        } `}>
-                                                        {poi.status.toUpperCase()}
-                                                    </span>
-                                                </div>
-                                                <div className="space-y-1 text-xs text-gray-600">
-                                                    <p><span className="font-semibold">H.No:</span> {poi.houseNumber}</p>
-                                                    <p><span className="font-semibold">Address:</span> {poi.address}</p>
-                                                    {poi.status === 'covered' && (
-                                                        <>
-                                                            <p><span className="font-semibold">Time:</span> {poi.lastCovered?.toDate().toLocaleTimeString()}</p>
-                                                            <p><span className="font-semibold">Vehicle:</span> {poi.vehicleId}</p>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </Popup>
+                                             <div className="p-0 min-w-[220px] overflow-hidden rounded-xl bg-white dark:bg-gray-800 border-none shadow-2xl">
+                                                 {poi.imageUrl && (
+                                                     <div className="w-full h-32 overflow-hidden relative">
+                                                         <img src={poi.imageUrl} alt={poi.ownerName} className="w-full h-full object-cover" />
+                                                         <div className="absolute top-2 right-2">
+                                                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest text-white shadow-lg ${poi.status === 'covered' ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                                                                 {poi.status.toUpperCase()}
+                                                             </span>
+                                                         </div>
+                                                     </div>
+                                                 )}
+                                                 <div className="p-3">
+                                                     <h4 className="font-black text-gray-900 dark:text-white uppercase tracking-tight mb-1">{poi.ownerName}</h4>
+                                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">{poi.houseNumber}</p>
+                                                     
+                                                     <div className="space-y-2 py-2 border-t border-gray-100 dark:border-gray-700">
+                                                         <div className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-300">
+                                                             <MapPin size={12} className="text-gray-400" />
+                                                             <span className="font-medium line-clamp-1">{poi.address}</span>
+                                                         </div>
+                                                         {poi.status === 'covered' && (
+                                                             <>
+                                                                 <div className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-300">
+                                                                     <Clock size={12} className="text-emerald-500" />
+                                                                     <span className="font-bold">{poi.lastCovered?.toDate().toLocaleTimeString()}</span>
+                                                                 </div>
+                                                                 <div className="flex items-center gap-2 text-[10px] text-blue-500 font-bold">
+                                                                     <Truck size={12} />
+                                                                     <span>{poi.vehicleId}</span>
+                                                                 </div>
+                                                             </>
+                                                         )}
+                                                     </div>
+                                                 </div>
+                                             </div>
+                                         </Popup>
                                     </Marker>
                                 ))}
                             </MapContainer>
@@ -667,8 +683,12 @@ const POIMonitoringPage = () => {
                                             <tr key={poi.id} className="hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-colors group">
                                                 <td className="p-4 border-b dark:border-gray-700">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="w-12 h-12 bg-white dark:bg-gray-900 shadow-sm rounded-2xl flex items-center justify-center text-emerald-600 border border-gray-100 dark:border-gray-800 group-hover:scale-110 transition-transform">
-                                                            <POIIcon size={24} />
+                                                        <div className="w-12 h-12 bg-white dark:bg-gray-900 shadow-sm rounded-2xl flex items-center justify-center text-emerald-600 border border-gray-100 dark:border-gray-800 group-hover:scale-110 transition-transform overflow-hidden">
+                                                            {poi.imageUrl ? (
+                                                                <img src={poi.imageUrl} alt={poi.ownerName} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <POIIcon size={24} />
+                                                            )}
                                                         </div>
                                                         <div>
                                                             <p className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{poi.ownerName}</p>
@@ -779,8 +799,12 @@ const POIMonitoringPage = () => {
                             {pois.filter(p => p.status === 'covered').slice(0, 5).map((poi, idx) => (
                                 <div key={idx} className="flex gap-4 relative group cursor-pointer">
                                     {idx < 4 && <div className="absolute left-4 top-10 w-px h-10 bg-gradient-to-b from-gray-200 to-transparent dark:from-gray-700"></div>}
-                                    <div className="w-9 h-9 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-center text-emerald-500 z-10 group-hover:scale-110 transition-transform">
-                                        <CheckCircle size={20} />
+                                    <div className="w-9 h-9 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-center text-emerald-500 z-10 group-hover:scale-110 transition-transform overflow-hidden">
+                                        {poi.imageUrl ? (
+                                            <img src={poi.imageUrl} alt={poi.ownerName} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <CheckCircle size={20} />
+                                        )}
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex justify-between items-start">

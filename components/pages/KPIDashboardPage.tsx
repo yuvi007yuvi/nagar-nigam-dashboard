@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import PageHeader from '../shared/PageHeader';
+import { useData } from '../../services/DataContext';
 
 // --- KPI Dashboard Page ---
 
@@ -8,7 +9,8 @@ import PageHeader from '../shared/PageHeader';
 const KPIGauge = ({ value, color }: { value: number, color: string }) => {
     const radius = 36;
     const circumference = 2 * Math.PI * radius;
-    const strokeDashoffset = circumference - (value / 100) * circumference;
+    const safeValue = (typeof value === 'number' && !isNaN(value)) ? value : 0;
+    const strokeDashoffset = circumference - (safeValue / 100) * circumference;
 
     return (
         <div className="relative w-32 h-32 flex items-center justify-center">
@@ -38,7 +40,7 @@ const KPIGauge = ({ value, color }: { value: number, color: string }) => {
                 />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-                <span className={`text-xl font-bold ${value === 0 ? 'text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-white'}`}>{value}%</span>
+                <span className={`text-xl font-bold ${safeValue === 0 ? 'text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-white'}`}>{safeValue}%</span>
             </div>
         </div>
     );
@@ -50,7 +52,7 @@ const KPICard = ({ title, value, type = 'chart', color = "#e5e7eb" }: any) => {
             <h4 className="font-bold text-gray-700 dark:text-gray-200 text-xs sm:text-sm mb-4 h-8 leading-tight">{title}</h4>
             <div className="flex-1 flex items-center justify-center">
                 {type === 'chart' ? (
-                    <KPIGauge value={typeof value === 'number' ? value : 0} color={color} />
+                    <KPIGauge value={(typeof value === 'number' && !isNaN(value)) ? value : 0} color={color} />
                 ) : (
                     <div className="text-xl font-bold text-gray-600 dark:text-gray-300">{value}</div>
                 )}
@@ -63,12 +65,33 @@ const KPICard = ({ title, value, type = 'chart', color = "#e5e7eb" }: any) => {
 }
 
 const KPIDashboardPage = () => {
+    const { userCharges, attendanceRecords, complaints, bulkCollections, loading } = useData();
+
+    const stats = React.useMemo(() => {
+        // User Charge Collection KPI (Mock target: 100 collections)
+        const userChargeKPI = Math.min(Math.round((userCharges.length / 100) * 100), 100);
+        
+        // Attendance KPI
+        const present = attendanceRecords.filter(r => r.status === 'Present' || r.status === 'P').length;
+        const attendanceKPI = attendanceRecords.length > 0 ? Math.round((present / attendanceRecords.length) * 100) : 0;
+        
+        // Complaint Resolution KPI
+        const resolved = complaints.filter(c => c.status === 'Resolved').length;
+        const complaintKPI = complaints.length > 0 ? Math.round((resolved / complaints.length) * 100) : 0;
+        
+        // Bulk Collection KPI (Mock target: 50 sites)
+        const uniqueSites = new Set(bulkCollections.map(b => b.site)).size;
+        const bulkKPI = Math.min(Math.round((uniqueSites / 50) * 100), 100);
+
+        return { userChargeKPI, attendanceKPI, complaintKPI, bulkKPI };
+    }, [userCharges, attendanceRecords, complaints, bulkCollections]);
+
     const kpiSections = [
         {
             title: "Customer Engagement & Transactions",
             cards: [
                 { title: "KYC Completion", value: 87, color: "#10b981" },
-                { title: "User Charge Collection", value: 72, color: "#f59e0b" },
+                { title: "User Charge Collection", value: stats.userChargeKPI, color: "#f59e0b" },
                 { title: "Receipt Generation", value: 95, color: "#3b82f6" }
             ]
         },
@@ -86,7 +109,7 @@ const KPIDashboardPage = () => {
             title: "Waste Collection & Coverage",
             cards: [
                 { title: "Waste Collection", value: 84, color: "#059669" },
-                { title: "Bulk Collection Scan", value: 79, color: "#f59e0b" },
+                { title: "Bulk Collection Scan", value: stats.bulkKPI, color: "#f59e0b" },
                 { title: "Pol Coverage", value: 92, color: "#3b82f6" },
                 { title: "Distance Coverage", value: 86, color: "#8b5cf6" }
             ]
@@ -94,16 +117,16 @@ const KPIDashboardPage = () => {
         {
             title: "Workforce Performance & Attendance",
             cards: [
-                { title: "Workforce Attendance", value: 93, color: "#10b981" },
+                { title: "Workforce Attendance", value: stats.attendanceKPI, color: "#10b981" },
                 { title: "UCC Supervisor Attendance", value: 96, color: "#3b82f6" },
                 { title: "C&T Supervisor Attendance", value: 94, color: "#8b5cf6" },
                 { title: "Uniform Compliance", value: "98%", type: "text" }
             ]
         },
         {
-            title: "Customer Service & Compilance",
+            title: "Customer Service & Compliance",
             cards: [
-                { title: "Complaint Resolution", value: 89, color: "#10b981" },
+                { title: "Complaint Resolution", value: stats.complaintKPI, color: "#10b981" },
                 { title: "IEC Campaign Execution", value: "Active", type: "text" },
                 { title: "Waste Segregation Compliance", value: "76%", type: "text" }
             ]

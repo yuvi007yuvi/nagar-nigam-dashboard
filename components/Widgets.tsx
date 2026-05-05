@@ -192,8 +192,8 @@ export const ComplaintChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
 
           <div className="flex items-center w-full gap-4">
             {/* Chart Container */}
-            <div className="relative w-[140px] h-[140px] flex-shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="relative w-[140px] h-[140px] flex-shrink-0" style={{ minHeight: '140px' }}>
+              <ResponsiveContainer width="100%" height="100%" minHeight={140}>
                 <PieChart>
                   <Pie
                     data={data}
@@ -216,7 +216,7 @@ export const ComplaintChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
               {/* Perfectly Centered Total */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-2xl font-black text-gray-800 dark:text-white leading-none font-display">
-                  {data.reduce((acc, curr) => acc + curr.value, 0)}
+                  {data.reduce((acc, curr) => acc + (isNaN(curr.value) ? 0 : curr.value), 0)}
                 </span>
                 <span className="text-[8px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1">Total</span>
               </div>
@@ -270,11 +270,11 @@ export const BulkCollectionChart: React.FC<{ data?: { segments: any[], binStatus
 
       <div className="flex flex-col gap-3 relative z-10">
         {/* Top: Minimal Pie Chart */}
-        <div className="h-[105px] relative">
+        <div className="h-[105px] relative" style={{ minHeight: '105px' }}>
           <div className="absolute inset-0 opacity-5 pointer-events-none flex items-center justify-center">
             <BinIllustration className="w-24 h-24" />
           </div>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minHeight={105}>
             <PieChart>
               <Pie
                 data={segments}
@@ -297,7 +297,7 @@ export const BulkCollectionChart: React.FC<{ data?: { segments: any[], binStatus
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="text-xl font-black text-gray-800 dark:text-white leading-none">
-              {segments.reduce((a: any, b: any) => a + b.value, 0)}
+              {segments.reduce((a: any, b: any) => a + (isNaN(b.value) ? 0 : b.value), 0)}
             </span>
             <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Units</span>
           </div>
@@ -407,8 +407,8 @@ export const CustomerChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
 
           <div className="flex items-center w-full gap-4">
             {/* Chart Container */}
-            <div className="relative w-[130px] h-[130px] flex-shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="relative w-[130px] h-[130px] flex-shrink-0" style={{ minHeight: '130px' }}>
+              <ResponsiveContainer width="100%" height="100%" minHeight={130}>
                 <PieChart>
                   <Pie
                     data={data}
@@ -431,7 +431,7 @@ export const CustomerChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
               {/* Centered % */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-xl font-black text-gray-800 dark:text-white leading-none font-display">
-                  {data.reduce((acc, curr) => acc + curr.value, 0)}%
+                  {data.reduce((acc, curr) => acc + (isNaN(curr.value) ? 0 : curr.value), 0)}%
                 </span>
                 <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Users</span>
               </div>
