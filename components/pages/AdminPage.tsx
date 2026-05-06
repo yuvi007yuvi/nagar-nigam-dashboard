@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ROLES } from '../../services/userRoleService';
-import { User, Shield, Users, Plus, RefreshCw, Settings, Database, Bell, BarChart3, Lock, Key, Monitor, Truck, Map as MapIcon } from 'lucide-react';
+import { 
+    User, Shield, Users, Plus, RefreshCw, Settings, Database, 
+    Bell, BarChart3, Lock, Key, Monitor, Truck, Map as MapIcon,
+    QrCode, ClipboardCheck
+} from 'lucide-react';
 
 import PageHeader from '../shared/PageHeader';
 
-// --- Admin Page ---
 const AdminPage = ({ currentUser }: { currentUser: any }) => {
-    const [activeTab, setActiveTab] = useState('modules');
-    const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: string, text: string } | null>(null);
     const navigate = useNavigate();
 
@@ -22,11 +22,53 @@ const AdminPage = ({ currentUser }: { currentUser: any }) => {
             path: '/user-management'
         },
         {
+            title: 'Role Definitions',
+            description: 'Define and configure system roles',
+            icon: Shield,
+            color: 'bg-emerald-600',
+            path: '/roles'
+        },
+        {
+            title: 'Role Assignments',
+            description: 'Assign roles and modules to users',
+            icon: ClipboardCheck,
+            color: 'bg-blue-600',
+            path: '/role-assignments'
+        },
+        {
+            title: 'QR Data',
+            description: 'Manage bulk collection sites and QR code registration',
+            icon: QrCode,
+            color: 'bg-indigo-600',
+            path: '/qr-data'
+        },
+        {
             title: 'System Settings',
             description: 'Configure system-wide settings',
             icon: Settings,
             color: 'bg-purple-500',
             path: '/settings'
+        },
+        {
+            title: 'Vehicle Master',
+            description: 'Manage vehicle fleet and IMEIs',
+            icon: Truck,
+            color: 'bg-orange-500',
+            path: '/vehicle-master'
+        },
+        {
+            title: 'Map Layers',
+            description: 'Upload and manage KML boundary files',
+            icon: MapIcon,
+            color: 'bg-emerald-500',
+            path: '/map-layers'
+        },
+        {
+            title: 'Bulk Collection',
+            description: 'Manage bulk collection of waste',
+            icon: Truck,
+            color: 'bg-indigo-600',
+            path: '/bulk-collection'
         },
         {
             title: 'Database Management',
@@ -55,30 +97,7 @@ const AdminPage = ({ currentUser }: { currentUser: any }) => {
             icon: BarChart3,
             color: 'bg-green-500',
             path: '#'
-        },
-        {
-            title: 'Bulk Collection',
-            description: 'Manage bulk collection of waste',
-            icon: Truck,
-            color: 'bg-indigo-600',
-            path: '/bulk-collection'
-        },
-        {
-            title: 'Map Layers',
-            description: 'Upload and manage KML boundary files',
-            icon: MapIcon,
-            color: 'bg-emerald-500',
-            path: '/map-layers'
-        },
-        {
-            title: 'Vehicle Master',
-            description: 'Manage vehicle fleet, assignments and IMEIs',
-            icon: Truck,
-            color: 'bg-orange-500',
-            path: '/vehicle-master'
         }
-
-
     ];
 
     // Clear messages after 5 seconds
@@ -95,7 +114,7 @@ const AdminPage = ({ currentUser }: { currentUser: any }) => {
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+            className="space-y-6 p-4"
         >
             <PageHeader
                 title="Administration"

@@ -1,261 +1,430 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Search, Filter, Download, MoreHorizontal, MapPin,
+    Search, Filter, Download, MapPin,
     CheckCircle, XCircle, Clock, AlertTriangle, User,
-    Fuel, Settings, Save, Bell, Inbox,
-    Plus, Minus, FileText, ChevronDown, Calendar, ArrowRight,
-    Home, Briefcase, Building2, Factory, Layers,
-    IndianRupee, Gauge, Droplets, TrendingUp,
-    Scale, Truck, WifiOff, PlayCircle, OctagonAlert, PauseCircle, StopCircle,
-    CalendarCheck, Edit, MessageSquare, RefreshCw, Camera
+    Save, Plus, FileText, ChevronDown, Calendar,
+    RefreshCw, Camera, QrCode, Trash2, Edit, X,
+    Image as ImageIcon, ArrowRight, ArrowLeft, Building2
 } from 'lucide-react';
-import {
-    TruckIllustration,
-    WalletIllustration,
-    MapIllustration,
-    AlertIllustration,
-    PeopleIllustration,
-    BinIllustration
-} from '../Illustrations';
-import { useData } from '../../services/DataContext';
+import { QRCodeSVG } from 'qrcode.react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import KMLLayers from '../shared/KMLLayers';
 import PageHeader from '../shared/PageHeader';
-
-interface NoDataViewProps {
-    message?: string;
-    illustration?: React.ElementType;
-}
-
-const NoDataView = ({ message = "No records found", illustration: Illustration = Inbox }: NoDataViewProps) => (
-    <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
-        <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-full mb-4">
-            {/* If it's a component from Illustrations, use it, else use lucide icon */}
-            {typeof Illustration === 'function' && (Illustration as any).name?.includes('Illustration') ? (
-                <div className="w-20 h-20"><Illustration /></div>
-            ) : (
-                // @ts-ignore
-                <Illustration size={32} className="text-gray-400 dark:text-gray-500" />
-            )}
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">{message}</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
-            There is currently no data to display in this section. New records will appear here automatically.
-        </p>
-    </div>
-);
+import { useData } from '../../services/DataContext';
+import { createAdminData, getAllAdminData, updateAdminData, deleteAdminData, createBulkCollection } from '../../services/databaseService';
+import { auth } from '../../services/firebaseConfig';
 
 const BulkCollectionPage = () => {
-    const { bulkCollections, loading: dataLoading } = useData();
-    const [loading, setLoading] = React.useState(false);
-    const [filteredRecords, setFilteredRecords] = React.useState<any[]>([]);
+    const { bulkCollections, refreshData, zones, wards } = useData();
+    const currentUser = auth.currentUser;
+    const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('analytics'); // 'analytics', 'reports'
+    const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
+    const [qrModalSite, setQrModalSite] = useState<any>(null);
+    const [bulkSites, setBulkSites] = useState<any[]>([]);
+    const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
+    
+    // Collection workflow state
+    const [collectionStep, setCollectionStep] = useState(1);
+    const [selectedSite, setSelectedSite] = useState<any>(null);
+    const [beforeImage, setBeforeImage] = useState<string | null>(null);
+    const [afterImage, setAfterImage] = useState<string | null>(null);
+    const [fillLevel, setFillLevel] = useState(50);
+    const [feedback, setFeedback] = useState('');
 
-    React.useEffect(() => {
-        setFilteredRecords(bulkCollections);
-    }, [bulkCollections]);
 
-    const handleSearch = () => {
-        setLoading(true);
-        // Simulate a small delay for better UX, but use real data
-        setTimeout(() => {
-            setFilteredRecords(bulkCollections);
-            setLoading(false);
-        }, 500);
+    useEffect(() => {
+        fetchSites();
+    }, []);
+
+    const fetchSites = async () => {
+        const result = await getAllAdminData('bulk_collection_sites');
+        if (result.success) {
+            setBulkSites(result.data);
+        }
     };
 
-    // Stats data structure from live data
-    const stats = React.useMemo(() => {
-        const total = bulkCollections.length;
-        const unique = new Set(bulkCollections.map(r => r.qr)).size;
-        
-        return [
-            { title: 'Total Collections', total: total, unique: unique, tat: '-', icon: Calendar, color: 'text-purple-600 bg-purple-100' },
-            { title: 'Sites Monitored', total: unique, unique: unique, tat: '-', icon: Clock, color: 'text-pink-500 bg-pink-100' },
-        ];
-    }, [bulkCollections]);
 
-    const BulkStatCard = ({ title, total, unique, tat, icon: Icon, color }: any) => (
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col justify-between h-full hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-2 mb-3">
-                <div className={`p-2 rounded-lg ${color} bg-opacity-20`}>
-                    <Icon size={18} className={color.split(' ')[0]} />
-                </div>
-                <h4 className="font-bold text-gray-800 dark:text-white text-sm">{title}</h4>
-            </div>
-            <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 dark:text-gray-400">Total Scans</span>
-                    <span className="font-bold text-gray-800 dark:text-white">{total}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 dark:text-gray-400">Unique Scans</span>
-                    <span className="font-bold text-gray-800 dark:text-white">{unique}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 dark:text-gray-400">TAT</span>
-                    <span className="font-bold text-gray-800 dark:text-white">{tat}</span>
-                </div>
-            </div>
-            <div className="mt-3 pt-2 border-t border-gray-50 dark:border-gray-700 text-[10px] text-gray-400 dark:text-gray-500 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1">
-                View More <div className="w-3 h-3 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[8px]">@</div>
-            </div>
-        </div>
-    );
+    const handleSubmitCollection = async () => {
+        if (!selectedSite || !beforeImage || !afterImage) return;
+        setLoading(true);
+        const result = await createBulkCollection({
+            siteId: selectedSite.siteId,
+            siteName: selectedSite.name,
+            qr: selectedSite.siteId,
+            createdAt: new Date(),
+            beforeImage: beforeImage,
+            afterImage: afterImage,
+            fillLevel: fillLevel,
+            feedback: feedback,
+            ward: selectedSite.ward,
+            supervisor: selectedSite.supervisor || currentUser?.displayName || 'Unknown',
+            sid: currentUser?.uid || 'N/A'
+        });
+
+        if (result.success) {
+            refreshData();
+            setIsCollectionModalOpen(false);
+            resetWorkflow();
+        }
+        setLoading(false);
+    };
+
+    const resetWorkflow = () => {
+        setCollectionStep(1);
+        setSelectedSite(null);
+        setBeforeImage(null);
+        setAfterImage(null);
+        setFillLevel(50);
+        setFeedback('');
+    };
+
+    const handleExportCSV = () => {
+        if (bulkCollections.length === 0) return;
+        
+        const headers = ['Site Name', 'Ward', 'Fill Level', 'Timestamp', 'Supervisor', 'Feedback'];
+        const rows = bulkCollections.map((col: any) => [
+            col.siteName,
+            col.ward,
+            `${col.fillLevel}%`,
+            col.createdAt?.toDate ? col.createdAt.toDate().toLocaleString() : 'N/A',
+            col.supervisor,
+            col.feedback?.replace(/,/g, ';') || 'N/A'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Bulk_Collection_Report_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const summaryCards = [
+        { title: 'Today', total: 40, unique: 40, tat: '1030 m', color: 'bg-purple-500', icon: Calendar },
+        { title: 'Yesterday', total: 44, unique: 44, tat: '1231 m', color: 'bg-pink-500', icon: Calendar },
+        { title: 'Till Month', total: 262, unique: 63, tat: '8525 m', color: 'bg-green-500', icon: Calendar },
+        { title: 'Previous Month', total: 1143, unique: 64, tat: '46815 m', color: 'bg-emerald-500', icon: Calendar },
+    ];
+
+    const collectionTypes = [
+        { label: 'Hawker', color: '#ff0000' },
+        { label: 'Dhalao Ghar', color: '#00ff00' },
+        { label: 'Refuse Compactor', color: '#0000ff' },
+        { label: 'Parking', color: '#ffff00' },
+        { label: 'Dump Site', color: '#ff00ff' },
+        { label: 'FCTS', color: '#00ffff' },
+        { label: 'Underground Dustbin', color: '#ffa500' },
+        { label: 'Dustbin', color: '#800080' },
+        { label: 'Mechanised Urinal / Toilet Cleaning', color: '#008000' },
+    ];
 
     return (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 p-2">
-            <PageHeader title="Bulk Collection" description="Collection status for hotels, hospitals, and large institutions." />
+        <div className="space-y-6 p-4 bg-gray-50/50 min-h-screen">
+            {/* Breadcrumbs */}
+            <div className="flex items-center gap-2 text-xs text-blue-600 font-medium">
+                <span className="hover:underline cursor-pointer">Home</span>
+                <span className="text-gray-400">/</span>
+                <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">Bulk Collection</span>
+            </div>
 
-            {/* Stats Grid */}
+            {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((stat, i) => (
-                    <BulkStatCard key={i} {...stat} />
+                {summaryCards.map((card, i) => (
+                    <div key={i} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col p-5 group hover:shadow-md transition-all">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className={`p-3 rounded-xl ${card.color} text-white shadow-lg shadow-${card.color.split('-')[1]}-200`}>
+                                <card.icon size={20} />
+                            </div>
+                            <h3 className="font-bold text-gray-800 text-lg">{card.title}</h3>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center text-sm font-bold">
+                                <span className="text-gray-500">Total Scans</span>
+                                <span className="text-blue-900">{card.total}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm font-bold">
+                                <span className="text-gray-500">Unique Scans</span>
+                                <span className="text-blue-900">{card.unique}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm font-bold">
+                                <span className="text-gray-500">TAT</span>
+                                <span className="text-blue-900">{card.tat}</span>
+                            </div>
+                        </div>
+                        <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
+                            <button className="text-[10px] font-black text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-1 uppercase tracking-widest">
+                                View More <ArrowRight size={12} />
+                            </button>
+                        </div>
+                    </div>
                 ))}
             </div>
 
-            {/* Actions & Filters */}
-            <div className="flex flex-col gap-4">
-                <div className="flex justify-end">
-                    <button className="flex items-center gap-1.5 px-4 py-2 bg-[#22c55e] text-white text-xs font-bold rounded-lg hover:bg-[#16a34a] shadow-sm">
-                        <Download size={14} /> Export
-                    </button>
-                </div>
-
-                <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-gray-50/50 dark:bg-gray-800/50 p-2 rounded-xl">
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 w-full md:w-auto flex-1">
-                        <select className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-green-500 shadow-sm">
-                            <option>Select Category</option>
-                        </select>
-                        <select className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-green-500 shadow-sm">
-                            <option>Zone</option>
-                        </select>
-                        <select className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-green-500 shadow-sm">
-                            <option>All Wards</option>
-                        </select>
-                        <button className="flex items-center justify-center gap-1.5 px-3 py-2 bg-green-50 dark:bg-green-900/30 border border-green-100 dark:border-green-800 text-green-700 dark:text-green-400 text-xs font-medium rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50">
-                            <Calendar size={14} /> Date Filter
-                        </button>
+            {/* Collection Types Legend */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-2 bg-white rounded-lg border border-gray-200 shadow-sm text-[11px] font-bold text-gray-700">
+                <span className="text-gray-500 uppercase tracking-widest text-[10px]">Bulk Collection Types:</span>
+                {collectionTypes.map((type, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                        <div className="w-3.5 h-3.5 rounded" style={{ backgroundColor: type.color }}></div>
+                        {type.label}
                     </div>
-                    <div className="w-full md:w-auto">
+                ))}
+            </div>
+
+            {/* Main Content Area */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                {/* Tabs & Controls Header */}
+                <div className="p-4 border-b border-gray-100 flex flex-wrap justify-between items-center bg-white gap-4">
+                    <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
                         <button
-                            onClick={handleSearch}
-                            disabled={loading}
-                            className={`w-full md:w-auto flex items-center justify-center gap-1.5 px-6 py-2 bg-[#22c55e] text-white text-xs font-bold rounded-lg hover:bg-[#16a34a] shadow-sm ${loading ? 'opacity-70' : ''}`}
+                            onClick={() => setActiveTab('analytics')}
+                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm' : 'text-gray-500'}`}
                         >
-                            {loading ? <RefreshCw size={14} className="animate-spin" /> : <Search size={14} />}
-                            Search
+                            Analytics Overview
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('reports')}
+                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'reports' ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                        >
+                            Collection Reports
+                        </button>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                        {activeTab === 'analytics' && (
+                            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                                <button 
+                                    onClick={() => setMapType('street')}
+                                    className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${mapType === 'street' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                                > Street </button>
+                                <button 
+                                    onClick={() => setMapType('satellite')}
+                                    className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${mapType === 'satellite' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                                > Satellite </button>
+                            </div>
+                        )}
+                        <button 
+                            onClick={() => setIsCollectionModalOpen(true)}
+                            className="px-5 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-blue-200"
+                        >
+                            <Plus size={16} /> New Collection
                         </button>
                     </div>
                 </div>
-            </div>
 
-            {/* Data Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[1400px]">
-                        <thead className="bg-[#22c55e] text-white">
-                            <tr>
-                                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider w-12 border-r border-green-400/30">
-                                    <div className="flex items-center justify-center">▶</div>
-                                </th>
-                                {[
-                                    'Scan ID', 'QR Code ID', 'Date of Scan', 'Site Name', 'Supervisor Name', 'Supervisor ID',
-                                    'Before Clean Time', 'Before Image', 'After Clean Time', 'After Image', 'Ward Name', 'Dustbin Fill %', 'Feedback'
-                                ].map((h) => (
-                                    <th key={h} className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30 last:border-none">
-                                        {h}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {filteredRecords.length > 0 ? (
-                                filteredRecords.map((r, i) => (
-                                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-[11px] font-bold text-gray-700 dark:text-gray-300">
-                                        <td className="px-4 py-4 text-center border-r dark:border-gray-700 text-emerald-500">▶</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.id}</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.qr}</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.date}</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.site}</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.supervisor}</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700 tracking-tighter">{r.sid}</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.btime}</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700">
-                                            {r.bimg ? (
-                                                <div className="w-12 h-8 rounded bg-gray-100 overflow-hidden cursor-zoom-in group/img relative">
-                                                    <img src={r.bimg} alt="Before" className="w-full h-full object-cover transition-transform group-hover/img:scale-125" />
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
-                                                        <Camera size={12} className="text-white" />
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <span className="text-gray-400">N/A</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.atime}</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700">
-                                            {r.aimg ? (
-                                                <div className="w-12 h-8 rounded bg-gray-100 overflow-hidden cursor-zoom-in group/img relative">
-                                                    <img src={r.aimg} alt="After" className="w-full h-full object-cover transition-transform group-hover/img:scale-125" />
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
-                                                        <Camera size={12} className="text-white" />
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <span className="text-gray-400">N/A</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700">{r.ward}</td>
-                                        <td className="px-4 py-4 border-r dark:border-gray-700">
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                                    <div
-                                                        className={`h-full ${parseInt(r.fill) > 80 ? 'bg-red-500' : 'bg-green-500'}`}
-                                                        style={{ width: r.fill }}
-                                                    ></div>
-                                                </div>
-                                                <span className={parseInt(r.fill) > 80 ? 'text-red-500 font-black' : ''}>{r.fill}</span>
+                <div className="relative min-h-[600px]">
+                    {activeTab === 'analytics' ? (
+                        <div className="h-[600px] w-full relative z-0">
+                            <MapContainer center={[27.4924, 77.6737]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                                <TileLayer
+                                    url={mapType === 'street' ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' : 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'}
+                                />
+                                <KMLLayers visible={true} />
+                                {/* Markers for collection sites */}
+                                {bulkSites.map(site => (
+                                    <Marker key={site.id} position={[27.4924 + (Math.random() - 0.5) * 0.1, 77.6737 + (Math.random() - 0.5) * 0.1]}>
+                                        <Popup>
+                                            <div className="p-2">
+                                                <h3 className="font-bold">{site.name}</h3>
+                                                <p className="text-xs text-gray-500">{site.address}</p>
                                             </div>
-                                        </td>
-                                        <td className="px-4 py-4">{r.feedback}</td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={14} className="py-8">
-                                        <NoDataView message="No bulk collection records found" illustration={BinIllustration} />
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Pagination */}
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">
-                    <div className="relative">
-                        <select className="appearance-none bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:border-green-500">
-                            <option>10</option>
-                        </select>
-                        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-                    </div>
-                    <div className="flex gap-1">
-                        <button className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-gray-500 dark:text-gray-400 text-xs disabled:opacity-50">«</button>
-                        <button className="px-2.5 py-1 bg-[#22c55e] text-white rounded text-xs font-medium shadow-sm">1</button>
-                        <button className="px-2.5 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-600">2</button>
-                        <button className="px-2.5 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-600">3</button>
-                        <button className="px-2.5 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-600">4</button>
-                        <button className="px-2.5 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-600">5</button>
-                        <button className="px-2.5 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-600">6</button>
-                        <button className="px-2.5 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-600">7</button>
-                        <button className="px-2.5 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-600">8</button>
-                        <button className="px-2.5 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-600">9</button>
-                        <button className="px-2.5 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-600">10</button>
-                        <button className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300 text-xs hover:bg-gray-300 dark:hover:bg-gray-600">»</button>
-                    </div>
+                                        </Popup>
+                                    </Marker>
+                                ))}
+                            </MapContainer>
+                        </div>
+                    ) : (
+                        <div className="p-6">
+                            <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
+                                <table className="w-full text-left">
+                                    <thead className="bg-gray-50 border-b border-gray-100">
+                                        <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                            <th className="px-6 py-4">Site Details</th>
+                                            <th className="px-6 py-4 text-center">Images (Before/After)</th>
+                                            <th className="px-6 py-4">Fill Level</th>
+                                            <th className="px-6 py-4">Timestamp</th>
+                                            <th className="px-6 py-4">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {bulkCollections.map((col: any) => (
+                                            <tr key={col.id} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <p className="font-bold text-gray-800">{col.siteName}</p>
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{col.ward}</p>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <img src={col.beforeImage} className="w-12 h-12 rounded-lg object-cover border-2 border-white shadow-sm ring-1 ring-gray-100" />
+                                                        <ArrowRight size={14} className="text-gray-300" />
+                                                        <img src={col.afterImage} className="w-12 h-12 rounded-lg object-cover border-2 border-white shadow-sm ring-1 ring-gray-100" />
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                            <div className={`h-full ${col.fillLevel > 80 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${col.fillLevel}%` }}></div>
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-gray-700">{col.fillLevel}%</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-xs font-bold text-gray-600">
+                                                    {col.createdAt?.toDate ? col.createdAt.toDate().toLocaleString() : 'Just now'}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[9px] font-black uppercase tracking-widest">Verified</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
-        </motion.div>
+
+            {/* Collection Workflow Modal */}
+            <AnimatePresence>
+                {isCollectionModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl">
+                            <div className="p-6 bg-blue-600 text-white">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="font-bold text-lg uppercase tracking-widest text-sm flex items-center gap-2">
+                                        <QrCode size={18} /> Collection Entry
+                                    </h3>
+                                    <button onClick={() => setIsCollectionModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20}/></button>
+                                </div>
+                                <div className="flex gap-2 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                                    <div className="h-full bg-white transition-all duration-500" style={{ width: `${(collectionStep / 3) * 100}%` }}></div>
+                                </div>
+                                <p className="text-[10px] font-black uppercase tracking-widest mt-3 opacity-80 text-center">Step {collectionStep} of 3</p>
+                            </div>
+
+                            <div className="p-6">
+                                {collectionStep === 1 && (
+                                    <div className="space-y-6">
+                                        <div className="text-center py-4">
+                                            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-600">
+                                                <QrCode size={32} />
+                                            </div>
+                                            <h4 className="font-bold text-gray-800">Identify Site</h4>
+                                            <p className="text-xs text-gray-500 mt-1">Scan QR code or select from the list</p>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {bulkSites.map(site => (
+                                                <button 
+                                                    key={site.id}
+                                                    onClick={() => { setSelectedSite(site); setCollectionStep(2); }}
+                                                    className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${selectedSite?.id === site.id ? 'border-blue-500 bg-blue-50' : 'border-gray-50 bg-gray-50 hover:border-blue-200'}`}
+                                                >
+                                                    <p className="font-bold text-gray-800 text-sm">{site.name}</p>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{site.siteId}</p>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {collectionStep === 2 && (
+                                    <div className="space-y-6">
+                                        <div className="text-center">
+                                            <h4 className="font-bold text-gray-800">Before Collection</h4>
+                                            <p className="text-xs text-gray-500 mt-1">Capture evidence and fill level</p>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="aspect-video bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center relative overflow-hidden group">
+                                                {beforeImage ? (
+                                                    <img src={beforeImage} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <>
+                                                        <Camera size={32} className="text-gray-400 mb-2" />
+                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Click to Capture</p>
+                                                    </>
+                                                )}
+                                                <input type="file" accept="image/*" capture="environment" onChange={e => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => setBeforeImage(reader.result as string);
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                            </div>
+                                            <div className="space-y-2 px-2">
+                                                <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase">
+                                                    <span>Fill Level</span>
+                                                    <span className="text-blue-600">{fillLevel}% Full</span>
+                                                </div>
+                                                <input type="range" className="w-full h-2 bg-gray-100 rounded-full appearance-none accent-blue-600 cursor-pointer" value={fillLevel} onChange={e => setFillLevel(parseInt(e.target.value))} />
+                                            </div>
+                                            <button onClick={() => setCollectionStep(3)} disabled={!beforeImage} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200 disabled:opacity-50 transition-all">Next: Take After Image</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {collectionStep === 3 && (
+                                    <div className="space-y-6">
+                                        <div className="text-center">
+                                            <h4 className="font-bold text-gray-800">After Collection</h4>
+                                            <p className="text-xs text-gray-500 mt-1">Capture cleaning verification</p>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="aspect-video bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center relative overflow-hidden group">
+                                                {afterImage ? (
+                                                    <img src={afterImage} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <>
+                                                        <Camera size={32} className="text-gray-400 mb-2" />
+                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Click to Capture</p>
+                                                    </>
+                                                )}
+                                                <input type="file" accept="image/*" capture="environment" onChange={e => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => setAfterImage(reader.result as string);
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                            </div>
+                                            <textarea 
+                                                placeholder="Supervisor notes..."
+                                                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 text-sm min-h-[100px] resize-none"
+                                                value={feedback}
+                                                onChange={e => setFeedback(e.target.value)}
+                                            />
+                                            <button 
+                                                onClick={handleSubmitCollection} 
+                                                disabled={loading || !afterImage} 
+                                                className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                {loading ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle size={16} />}
+                                                Complete & Submit
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+        </div>
     );
-}
+};
 
 export default BulkCollectionPage;

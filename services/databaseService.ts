@@ -172,6 +172,8 @@ export const getAllBulkCollections = () => getAllDocuments('bulkCollections');
 export const getBulkCollectionById = (id: string) => getDocumentById('bulkCollections', id);
 export const updateBulkCollection = (id: string, data: any) => updateDocument('bulkCollections', id, data);
 export const deleteBulkCollection = (id: string) => deleteDocument('bulkCollections', id);
+export const createBulkCollectionSite = (siteData: any) => createDocument('bulk_collection_sites', siteData);
+export const getAllBulkCollectionSites = () => getAllDocuments('bulk_collection_sites');
 
 // Coverage Monitoring
 export const createCoverageRecord = (coverageData: any) => createDocument('coverageRecords', coverageData);

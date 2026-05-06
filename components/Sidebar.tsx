@@ -57,28 +57,43 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, setIsCollapsed, 
     }
   };
 
-  const allMenuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { name: 'Customers', icon: Users, path: '/customers' },
-    { name: 'User Charge', icon: Wallet, path: '/user-charge' },
-    { name: 'Fuel', icon: Fuel, path: '/fuel' },
-    { name: 'Weighment', icon: Scale, path: '/weighment' },
-    { name: 'Bulk Collection', icon: Trash2, path: '/bulk-collection' },
-    { name: 'Live Vehicle', icon: Map, path: '/live-vehicle' },
-    { name: 'Vehicle History', icon: History, path: '/vehicle-history' },
-    { name: 'Attendance', icon: CalendarCheck, path: '/attendance' },
-    { name: 'Complaint', icon: AlertCircle, path: '/complaint' },
-    { name: 'Admin', icon: Shield, path: '/admin' },
-    { name: 'Settings', icon: Settings, path: '/settings' },
-    { name: 'KPI Dashboard', icon: BarChart3, path: '/kpi-dashboard' },
-    { name: 'POI Monitoring', icon: Home, path: '/poi-monitoring' },
-    { name: 'Roles', icon: Users, path: '/roles' },
-    { name: 'Profile', icon: User, path: '/profile' }
+  const menuGroups = [
+    {
+      title: 'Analytics',
+      items: [
+        { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+        { name: 'KPI Dashboard', icon: BarChart3, path: '/kpi-dashboard' },
+      ]
+    },
+    {
+      title: 'Fleet Tracking',
+      items: [
+        { name: 'Live Vehicle', icon: Map, path: '/live-vehicle' },
+        { name: 'Vehicle History', icon: History, path: '/vehicle-history' },
+        { name: 'POI Monitoring', icon: Home, path: '/poi-monitoring' },
+      ]
+    },
+    {
+      title: 'Operations',
+      items: [
+        { name: 'Customers', icon: Users, path: '/customers' },
+        { name: 'User Charge', icon: Wallet, path: '/user-charge' },
+        { name: 'Fuel', icon: Fuel, path: '/fuel' },
+        { name: 'Weighment', icon: Scale, path: '/weighment' },
+        { name: 'Bulk Collection', icon: Trash2, path: '/bulk-collection' },
+        { name: 'Attendance', icon: CalendarCheck, path: '/attendance' },
+        { name: 'Complaint', icon: AlertCircle, path: '/complaint' },
+      ]
+    },
+    {
+      title: 'Administration',
+      items: [
+        { name: 'Admin', icon: Shield, path: '/admin' },
+        { name: 'Settings', icon: Settings, path: '/settings' },
+        { name: 'Profile', icon: User, path: '/profile' },
+      ]
+    }
   ];
-
-  const menuItems = allMenuItems.filter(item => 
-    allowedModules.map(m => m.trim().toLowerCase()).includes(item.name.trim().toLowerCase())
-  );
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -178,51 +193,72 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, setIsCollapsed, 
       )}
 
       {/* Navigation */}
-      <nav className={`flex-1 overflow-y-auto scrollbar-hide py-4 ${isCollapsed ? 'px-2' : 'px-3'} space-y-1 relative z-20`}>
-        {menuItems.map((item) => {
-          const active = isActive(item.path);
+      <nav className={`flex-1 overflow-y-auto scrollbar-hide py-4 ${isCollapsed ? 'px-2' : 'px-3'} space-y-6 relative z-20`}>
+        {menuGroups.map((group) => {
+          // Filter items in this group that are allowed
+          const groupItems = group.items.filter(item => 
+            allowedModules.map(m => m.trim().toLowerCase()).includes(item.name.trim().toLowerCase())
+          );
+
+          if (groupItems.length === 0) return null;
+
           return (
-            <motion.div
-              key={item.name}
-              whileHover={{ x: isCollapsed ? 0 : 4 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="relative group/item"
-            >
-              <button
-                onClick={() => handleNavigate(item.path)}
-                className={`w-full group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-4 py-2.5 rounded-xl transition-all duration-200 relative overflow-hidden text-left
-                    ${active
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20 font-semibold'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 hover:shadow-sm hover:text-emerald-700 dark:hover:text-emerald-400 font-medium'}`}
-              >
-                <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} relative z-10 w-full`}>
-                  <item.icon
-                    size={18}
-                    strokeWidth={active ? 2.5 : 2}
-                    className={`transition-colors duration-200 flex-shrink-0 ${active ? 'text-white' : 'text-gray-400 group-hover:text-emerald-500'}`}
-                  />
-                  {!isCollapsed && <span className="text-sm tracking-wide line-clamp-1">{item.name}</span>}
-                </div>
-
-                {active && !isCollapsed && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="relative z-10"
-                  >
-                    <ChevronRight size={14} className="text-white/80" />
-                  </motion.div>
-                )}
-              </button>
-
-              {/* Tooltip for mini sidebar */}
-              {isCollapsed && (
-                <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-[11px] font-black rounded-lg opacity-0 pointer-events-none group-hover/item:opacity-100 group-hover/item:left-[calc(100%+4px)] transition-all z-[100] whitespace-nowrap shadow-2xl uppercase tracking-widest border border-gray-800">
-                  {item.name}
-                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-y-[6px] border-y-transparent border-r-[6px] border-r-gray-900"></div>
+            <div key={group.title} className="space-y-1">
+              {!isCollapsed && (
+                <div className="px-4 mb-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400/80 dark:text-gray-500/80">
+                    {group.title}
+                  </p>
                 </div>
               )}
-            </motion.div>
+              
+              {groupItems.map((item) => {
+                const active = isActive(item.path);
+                return (
+                  <motion.div
+                    key={item.name}
+                    whileHover={{ x: isCollapsed ? 0 : 4 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    className="relative group/item"
+                  >
+                    <button
+                      onClick={() => handleNavigate(item.path)}
+                      className={`w-full group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-4 py-2.5 rounded-xl transition-all duration-200 relative overflow-hidden text-left
+                          ${active
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20 font-semibold'
+                          : 'text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 hover:shadow-sm hover:text-emerald-700 dark:hover:text-emerald-400 font-medium'}`}
+                    >
+                      <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} relative z-10 w-full`}>
+                        <item.icon
+                          size={18}
+                          strokeWidth={active ? 2.5 : 2}
+                          className={`transition-colors duration-200 flex-shrink-0 ${active ? 'text-white' : 'text-gray-400 group-hover:text-emerald-500'}`}
+                        />
+                        {!isCollapsed && <span className="text-sm tracking-wide line-clamp-1">{item.name}</span>}
+                      </div>
+
+                      {active && !isCollapsed && (
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="relative z-10"
+                        >
+                          <ChevronRight size={14} className="text-white/80" />
+                        </motion.div>
+                      )}
+                    </button>
+
+                    {/* Tooltip for mini sidebar */}
+                    {isCollapsed && (
+                      <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-[11px] font-black rounded-lg opacity-0 pointer-events-none group-hover/item:opacity-100 group-hover/item:left-[calc(100%+4px)] transition-all z-[100] whitespace-nowrap shadow-2xl uppercase tracking-widest border border-gray-800">
+                        {item.name}
+                        <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-y-[6px] border-y-transparent border-r-[6px] border-r-gray-900"></div>
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
           );
         })}
       </nav>

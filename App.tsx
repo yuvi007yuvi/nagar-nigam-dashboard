@@ -35,6 +35,8 @@ const HomePage = lazy(() => import('./components/HomePage'));
 const MapLayersPage = lazy(() => import('./components/pages/MapLayersPage'));
 const VehicleHistoryPage = lazy(() => import('./components/pages/VehicleHistoryPage'));
 const VehicleMasterPage = lazy(() => import('./components/pages/VehicleMasterPage'));
+const RoleAssignmentPage = lazy(() => import('./components/pages/RoleAssignmentPage'));
+const SiteMasterPage = lazy(() => import('./components/pages/SiteMasterPage'));
 
 
 function App() {
@@ -154,6 +156,11 @@ function App() {
                     <RolesPage />
                   </ProtectedRoute>
                 } />
+                <Route path="/role-assignments" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <RoleAssignmentPage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/poi-monitoring" element={
                   <ProtectedRoute userId={user?.uid || ''} requiredModule="POI Monitoring">
                     <POIMonitoringPage />
@@ -187,6 +194,11 @@ function App() {
                 <Route path="/vehicle-master" element={
                   <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
                     <VehicleMasterPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/qr-data" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <SiteMasterPage />
                   </ProtectedRoute>
                 } />
 

@@ -4,8 +4,8 @@ import { getAllAdminData } from './databaseService';
 import { rtdb } from './firebaseConfig';
 import { ref, get, set } from 'firebase/database';
 
-const GPS_FETCH_INTERVAL = 15000; // Fetch every 15 seconds (Optimized from 10s)
-const HISTORY_SNAPSHOT_INTERVAL = 60000; // Save to Firestore every 60 seconds
+const GPS_FETCH_INTERVAL = 180000; // Fetch every 3 minutes (180s) to save quota
+const HISTORY_SNAPSHOT_INTERVAL = 180000; // Save to Firestore every 3 minutes
 const MASTER_TIMEOUT = 30000; // 30 seconds
 const MOVEMENT_THRESHOLD = 0.0003; // ~30 meters in lat/lng delta
 
@@ -15,6 +15,8 @@ const myClientId = Math.random().toString(36).substring(7);
 export const GPSSyncService: React.FC = () => {
     const [isMaster, setIsMaster] = useState(false);
     const lastPositionsRef = useRef<Map<string, { lat: number, lng: number }>>(new Map());
+    const vehicleConfigsRef = useRef<any[]>([]);
+    const lastConfigFetchRef = useRef<number>(0);
     const quotaExceededRef = useRef<boolean>(false);
 
     useEffect(() => {
@@ -61,10 +63,17 @@ export const GPSSyncService: React.FC = () => {
             if (!amIMaster) return;
 
             try {
-                // 1. Fetch Vehicle Master Config
-                const configResult = await getAllAdminData('vehicles');
-                const vehicleConfigs = configResult.success ? (configResult.data as any[]) : [];
+                // 1. Fetch/Refresh Vehicle Master Config (Only once every 10 mins or if empty)
+                const now = Date.now();
+                if (vehicleConfigsRef.current.length === 0 || (now - lastConfigFetchRef.current > 600000)) {
+                    const configResult = await getAllAdminData('vehicles');
+                    if (configResult.success) {
+                        vehicleConfigsRef.current = configResult.data as any[];
+                        lastConfigFetchRef.current = now;
+                    }
+                }
                 
+                const vehicleConfigs = vehicleConfigsRef.current;
                 const trackingEnabledMap = new Map();
                 const historyEnabledMap = new Map();
                 

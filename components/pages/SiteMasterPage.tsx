@@ -1,0 +1,382 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    Plus, 
+    Download, 
+    Search, 
+    QrCode, 
+    Edit, 
+    X, 
+    Filter, 
+    Calendar,
+    Save,
+    RotateCcw,
+    MapPin
+} from 'lucide-react';
+import PageHeader from '../shared/PageHeader';
+import { useData } from '../../services/DataContext';
+import { createBulkCollectionSite, getAllBulkCollectionSites } from '../../services/databaseService';
+
+interface Site {
+    id: string;
+    qrId: string;
+    siteName: string;
+    zone: string;
+    ward: string;
+    type: string;
+    latitude: string;
+    longitude: string;
+    createdAt: any;
+    buildingStreet?: string;
+}
+
+const SiteMasterPage = () => {
+    const { zones, wards } = useData();
+    const [sites, setSites] = useState<Site[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    
+    // Form State
+    const [formData, setFormData] = useState({
+        zone: '',
+        ward: '',
+        siteName: '',
+        buildingStreet: '',
+        latitude: '',
+        longitude: '',
+        type: 'Dustbin'
+    });
+
+    useEffect(() => {
+        fetchSites();
+    }, []);
+
+    const fetchSites = async () => {
+        setLoading(true);
+        try {
+            const result = await getAllBulkCollectionSites();
+            if (result.success) {
+                setSites(result.data);
+            }
+        } catch (error) {
+            console.error("Error fetching sites:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        try {
+            // Generate a QR ID like MVNNDG91 (mock logic)
+            const prefix = formData.type === 'Dustbin' ? 'MVNNDB' : 'MVNNDG';
+            const qrId = `${prefix}${Math.floor(Math.random() * 1000)}`;
+            
+            const result = await createBulkCollectionSite({
+                ...formData,
+                qrId,
+                createdAt: new Date().toISOString()
+            });
+
+            if (result.success) {
+                setShowAddModal(false);
+                setFormData({
+                    zone: '',
+                    ward: '',
+                    siteName: '',
+                    buildingStreet: '',
+                    latitude: '',
+                    longitude: '',
+                    type: 'Dustbin'
+                });
+                fetchSites();
+            }
+        } catch (error) {
+            console.error("Error saving site:", error);
+        }
+    };
+
+    const handleExport = () => {
+        const headers = ['QR Code ID', 'Site Name', 'Zone', 'Ward', 'Type', 'Latitude', 'Longitude', 'Date'];
+        const csvContent = [
+            headers.join(','),
+            ...sites.map(site => [
+                site.qrId,
+                site.siteName,
+                site.zone,
+                site.ward,
+                site.type,
+                site.latitude,
+                site.longitude,
+                site.createdAt ? new Date(site.createdAt).toLocaleDateString() : ''
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute('download', `QR_Data_${new Date().toLocaleDateString()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    return (
+        <div className="space-y-6">
+            <PageHeader 
+                title="QR Data" 
+                description="Manage bulk collection sites and QR code registration"
+            />
+            {/* Top Stats & Actions */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Total Rows : <span className="font-bold text-gray-900 dark:text-white">{sites.length}</span>
+                </h2>
+                <div className="flex gap-3">
+                    <button 
+                        onClick={() => setShowAddModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#27ae60] hover:bg-[#219150] text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                    >
+                        <Plus size={18} />
+                        Add Entry
+                    </button>
+                    <button 
+                        onClick={handleExport}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#27ae60] hover:bg-[#219150] text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                    >
+                        <Download size={18} />
+                        Export
+                    </button>
+                </div>
+            </div>
+
+            {/* Filters Bar */}
+            <div className="bg-[#f8fff9] dark:bg-gray-800/50 p-4 rounded-xl border border-[#e0f2e1] dark:border-gray-700 flex flex-wrap gap-4 items-center">
+                <select className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm min-w-[150px] outline-none focus:ring-2 focus:ring-[#27ae60]/20">
+                    <option value="">Zone</option>
+                    {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+                </select>
+                <select className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm min-w-[150px] outline-none focus:ring-2 focus:ring-[#27ae60]/20">
+                    <option value="">All Wards</option>
+                    {wards.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </select>
+                <select className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm min-w-[150px] outline-none focus:ring-2 focus:ring-[#27ae60]/20">
+                    <option value="">Type</option>
+                    <option value="Dustbin">Dustbin</option>
+                    <option value="Dhalao Ghar">Dhalao Ghar</option>
+                    <option value="Open Point">Open Point</option>
+                </select>
+                <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 transition-colors">
+                    <Calendar size={16} />
+                    Date Filter
+                </button>
+                <div className="flex-1"></div>
+                <button className="flex items-center gap-2 px-6 py-2 bg-[#27ae60] hover:bg-[#219150] text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
+                    <Search size={18} />
+                    Search All
+                </button>
+            </div>
+
+            {/* Sites Table */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-[#27ae60] text-white">
+                            <tr>
+                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">QR Code ID</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Site Name</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Zone</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Ward</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Type</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Latitude</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Longitude</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Date</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Time</th>
+                                <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">QR</th>
+                                <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Edit</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {loading ? (
+                                Array(5).fill(0).map((_, i) => (
+                                    <tr key={i} className="animate-pulse">
+                                        {Array(11).fill(0).map((_, j) => (
+                                            <td key={j} className="px-4 py-4"><div className="h-4 bg-gray-100 dark:bg-gray-700 rounded"></div></td>
+                                        ))}
+                                    </tr>
+                                ))
+                            ) : sites.length === 0 ? (
+                                <tr>
+                                    <td colSpan={11} className="px-4 py-12 text-center text-gray-500">No sites found</td>
+                                </tr>
+                            ) : (
+                                sites.map((site) => (
+                                    <tr key={site.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                        <td className="px-4 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">{site.qrId}</td>
+                                        <td className="px-4 py-4 text-sm text-gray-900 dark:text-white font-medium">{site.siteName}</td>
+                                        <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{site.zone}</td>
+                                        <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{site.ward}</td>
+                                        <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{site.type}</td>
+                                        <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400 font-mono">{site.latitude}</td>
+                                        <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400 font-mono">{site.longitude}</td>
+                                        <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                            {site.createdAt ? new Date(site.createdAt).toLocaleDateString() : '-'}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                            {site.createdAt ? new Date(site.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                            <button className="p-1.5 bg-[#e8f5e9] text-[#27ae60] rounded hover:bg-[#c8e6c9] transition-colors">
+                                                <QrCode size={18} />
+                                            </button>
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                            <button className="p-1.5 bg-[#e8f5e9] text-[#27ae60] rounded hover:bg-[#c8e6c9] transition-colors">
+                                                <Edit size={18} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Add Site Modal */}
+            <AnimatePresence>
+                {showAddModal && (
+                    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden"
+                        >
+                            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Add Site Detail</h3>
+                                <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+                                    <X size={20} className="text-gray-400" />
+                                </button>
+                            </div>
+
+                            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Zone & Circle</label>
+                                    <select 
+                                        value={formData.zone}
+                                        onChange={(e) => setFormData({...formData, zone: e.target.value})}
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    >
+                                        <option value="">Zone & Circle</option>
+                                        {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Ward</label>
+                                    <select 
+                                        value={formData.ward}
+                                        onChange={(e) => setFormData({...formData, ward: e.target.value})}
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    >
+                                        <option value="">Ward</option>
+                                        {wards.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Site Name</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="Enter Site Name"
+                                        value={formData.siteName}
+                                        onChange={(e) => setFormData({...formData, siteName: e.target.value})}
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Building / Street</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="Enter Building / Street"
+                                        value={formData.buildingStreet}
+                                        onChange={(e) => setFormData({...formData, buildingStreet: e.target.value})}
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Latitude</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="Enter Latitude"
+                                        value={formData.latitude}
+                                        onChange={(e) => setFormData({...formData, latitude: e.target.value})}
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Longitude</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="Enter Longitude"
+                                        value={formData.longitude}
+                                        onChange={(e) => setFormData({...formData, longitude: e.target.value})}
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                </div>
+
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Type</label>
+                                    <select 
+                                        value={formData.type}
+                                        onChange={(e) => setFormData({...formData, type: e.target.value})}
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    >
+                                        <option value="Dustbin">Dustbin</option>
+                                        <option value="Dhalao Ghar">Dhalao Ghar</option>
+                                        <option value="Open Point">Open Point</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 flex justify-end items-center gap-3">
+                                <button 
+                                    onClick={() => setShowAddModal(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                >
+                                    x Close
+                                </button>
+                                <button 
+                                    onClick={() => setFormData({
+                                        zone: '',
+                                        ward: '',
+                                        siteName: '',
+                                        buildingStreet: '',
+                                        latitude: '',
+                                        longitude: '',
+                                        type: 'Dustbin'
+                                    })}
+                                    className="px-4 py-2 text-sm font-medium bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                                >
+                                    Reset
+                                </button>
+                                <button 
+                                    onClick={handleSave}
+                                    className="px-6 py-2 text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-sm"
+                                >
+                                    Save
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+export default SiteMasterPage;
