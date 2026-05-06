@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import {
     Search, Filter, MapPin, CheckCircle, TrendingUp, Truck, Mail, Phone,
@@ -12,6 +12,7 @@ import {
 import PageHeader from '../shared/PageHeader';
 import KMLLayers from '../shared/KMLLayers';
 import MapSettingsOverlay from '../shared/MapSettingsOverlay';
+import { useData } from '../../services/DataContext';
 
 import { getAuth } from 'firebase/auth';
 import { getPOIs, getCoverageStats, POI, getRouteData, getWardRoads, getWardRoutes } from '../../services/poiService';
@@ -44,6 +45,37 @@ const getPinIcon = (color: string) => {
         iconAnchor: [15, 40],
         popupAnchor: [0, -40]
     });
+};
+
+// Component to handle map centering and zooming
+const MapBoundsSetter = ({ routePath, pois }: { routePath: any, pois: any[] }) => {
+    const map = useMap();
+    useEffect(() => {
+        if (routePath) {
+            try {
+                const geoJsonLayer = L.geoJSON(routePath);
+                if (geoJsonLayer.getLayers().length > 0) {
+                    map.fitBounds(geoJsonLayer.getBounds(), { padding: [50, 50] });
+                }
+            } catch (e) {
+                console.error("Error fitting route bounds:", e);
+                // Fallback for custom objects if they have coordinates
+                if (routePath.plannedRoute && routePath.plannedRoute.length > 0) {
+                    const bounds = L.latLngBounds(routePath.plannedRoute);
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+            }
+        } else if (pois && pois.length > 0) {
+            try {
+                const points = pois.map(p => [p.lat, p.lng] as [number, number]);
+                const bounds = L.latLngBounds(points);
+                map.fitBounds(bounds, { padding: [50, 50] });
+            } catch (e) {
+                console.error("Error fitting POI bounds:", e);
+            }
+        }
+    }, [routePath, pois, map]);
+    return null;
 };
 
 const POIIcon = ({ size = 24, className = "" }: { size?: number; className?: string }) => (
@@ -81,24 +113,26 @@ const POIMonitoringPage = () => {
     const [pois, setPois] = useState<POI[]>([]);
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const { zones, wards } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedWard, setSelectedWard] = useState('All');
     const [selectedZone, setSelectedZone] = useState('All');
     const [selectedRoute, setSelectedRoute] = useState('All');
-    const [availableRoutes, setAvailableRoutes] = useState<string[]>([]);
+    const [availableRoutes, setAvailableRoutes] = useState<any[]>([]);
     const [generatingReport, setGeneratingReport] = useState<string | null>(null);
     const [showReport, setShowReport] = useState(false);
     const [reportData, setReportData] = useState<any[]>([]);
     const [activeReport, setActiveReport] = useState<string>('');
     const [userName, setUserName] = useState('Administrator');
     const [reportFilters, setReportFilters] = useState({
-        zone: 'Zone A',
-        ward: '35-Bankhandi',
+        zone: '',
+        ward: '',
         vehicle: 'All',
         vType: 'All',
-        startDate: '2026-03-07',
-        endDate: '2026-03-07'
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0]
     });
+    const [isStale, setIsStale] = useState(false);
 
     useEffect(() => {
         const auth = getAuth();
@@ -123,52 +157,29 @@ const POIMonitoringPage = () => {
             setGeneratingReport(null);
             setShowReport(true);
 
-            // Generate real data based on available POIs and stats
+            // Use actual POIs for reports
             if (reportType === 'POI Report' || reportType === 'Coverage Overview') {
-                const data = pois.slice(0, 10).map((p, i) => ({
+                const data = pois.map((p, i) => ({
                     sno: i + 1,
-                    zone: p.zone || '1',
-                    ward: p.ward || 'General',
+                    zone: p.zone || 'N/A',
+                    ward: p.ward || 'N/A',
                     vehicle: p.vehicleId || 'N/A',
-                    vtype: 'Primary - Auto Tipper',
-                    route: p.routeId || 'R' + (i + 1),
+                    vtype: 'Auto Tipper',
+                    route: p.routeId || 'N/A',
                     total: 1,
-                    covered: p.status === 'Visited' ? 1 : 0,
-                    pending: p.status === 'Visited' ? 0 : 1,
-                    coverage: p.status === 'Visited' ? '100%' : '0%',
+                    covered: p.status === 'covered' ? 1 : 0,
+                    pending: p.status === 'covered' ? 0 : 1,
+                    coverage: p.status === 'covered' ? '100%' : '0%',
                     date: reportFilters.startDate,
                     inTime: p.lastVisited || 'N/A',
                     outTime: '-'
                 }));
                 setReportData(data);
-            } else if (reportType === 'Trip Report') {
-                const uniqueVehicles = Array.from(new Set(pois.map(p => p.vehicleId).filter(Boolean)));
-                const data = uniqueVehicles.slice(0, 8).map((v, i) => ({
-                    sno: i + 1,
-                    vehicle: v,
-                    driver: 'Staff ' + (i + 1),
-                    trips: (i % 2) + 1,
-                    distance: (15 + i * 3) + ' km',
-                    start: '08:00 AM',
-                    end: '12:00 PM',
-                    status: 'Completed',
-                    date: reportFilters.startDate
-                }));
-                setReportData(data);
-            } else if (reportType === 'Distance Report') {
-                const uniqueVehicles = Array.from(new Set(pois.map(p => p.vehicleId).filter(Boolean)));
-                const data = uniqueVehicles.slice(0, 8).map((v, i) => ({
-                    sno: i + 1,
-                    vehicle: v,
-                    zone: 'Zone ' + (i % 3 + 1),
-                    distance: (25 + i * 5) + ' km',
-                    fuel: (10 + i) + 'L',
-                    duration: '4h 30m',
-                    date: reportFilters.startDate
-                }));
-                setReportData(data);
+            } else {
+                // Trip and Distance reports require GPS history which is currently not in mock
+                setReportData([]);
             }
-        }, 1200);
+        }, 800);
     };
     const [routePath, setRoutePath] = useState<any>(null);
     const [wardRoads, setWardRoads] = useState<any[]>([]);
@@ -193,18 +204,16 @@ const POIMonitoringPage = () => {
     }, [selectedWard]);
 
     useEffect(() => {
+        setIsStale(true);
         fetchData();
     }, [selectedWard, selectedZone, selectedRoute]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Stats can load automatically
-            const statsResult = await getCoverageStats();
-            if (statsResult.success) {
-                setStats(statsResult.data);
-            }
-
+            // We no longer load stats automatically to prevent premature updates
+            // Stats will only be fetched when "Load" buttons are clicked
+            
             // Load roads as background but clear operational data
             if (selectedWard !== 'All' && selectedWard !== '') {
                 const roadsResult = await getWardRoads(selectedWard);
@@ -228,21 +237,37 @@ const POIMonitoringPage = () => {
     const handleLoadCustomers = async () => {
         if (selectedWard !== 'All' && selectedWard !== '') {
             setLoading(true);
+            
+            // Fetch stats for the specific selection when loading customers
+            const statsResult = await getCoverageStats(selectedWard, selectedZone);
+            if (statsResult.success) {
+                setStats(statsResult.data);
+            }
+
             const poiResult = await getPOIs(selectedWard === 'All' ? undefined : selectedWard, selectedZone === 'All' ? undefined : selectedZone);
             if (poiResult.success) {
                 setPois(poiResult.data || []);
             }
+            setIsStale(false);
             setLoading(false);
         }
     };
 
     const handleLoadRoute = async () => {
-        if (selectedWard !== 'All' && selectedWard !== '') {
+        if (selectedRoute !== 'All' && selectedRoute !== '') {
             setLoading(true);
-            const routeResult = await getRouteData(selectedWard, selectedRoute === 'All' ? undefined : selectedRoute);
+            
+            // Fetch stats for the specific selection when loading route
+            const statsResult = await getCoverageStats(selectedWard, selectedZone);
+            if (statsResult.success) {
+                setStats(statsResult.data);
+            }
+
+            const routeResult = await getRouteData(selectedRoute);
             if (routeResult.success) {
                 setRoutePath(routeResult.data);
             }
+            setIsStale(false);
             setLoading(false);
         }
     };
@@ -253,15 +278,12 @@ const POIMonitoringPage = () => {
         poi.houseNumber.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const zones = ['All', 'Zone A', 'Zone B', 'Zone C'];
-    const wards = ['All', '35-Bankhandi', '65-Holi Gali', '56-Mandi Ramdas', '30-Krishna Nagar', '42-Laxmi Nagar'];
-    const routesArray = ['All', 'W35R1', 'W65R1', 'W56R1', 'W30R1'];
 
     const summaryCards = [
-        { label: 'Total Households', value: stats?.totalPOIs || '0', icon: POIIcon, color: 'text-blue-600 bg-blue-100' },
-        { label: 'Covered Today', value: stats?.coveredToday || '0', icon: CheckCircle, color: 'text-green-600 bg-green-100' },
-        { label: 'Coverage %', value: `${stats?.coveragePercentage || '0'}% `, icon: TrendingUp, color: 'text-emerald-600 bg-emerald-100' },
-        { label: 'Active Vehicles', value: stats?.activeVehicles || '0', icon: Truck, color: 'text-purple-600 bg-purple-100' },
+        { label: 'Total Households', value: isStale ? '---' : (stats?.totalPOIs || '0'), icon: POIIcon, color: 'text-blue-600 bg-blue-100' },
+        { label: 'Covered Today', value: isStale ? '---' : (stats?.coveredToday || '0'), icon: CheckCircle, color: 'text-green-600 bg-green-100' },
+        { label: 'Coverage %', value: isStale ? '---' : `${stats?.coveragePercentage || '0'}%`, icon: TrendingUp, color: 'text-emerald-600 bg-emerald-100' },
+        { label: 'Active Vehicles', value: isStale ? '---' : (stats?.activeVehicles || '0'), icon: Truck, color: 'text-purple-600 bg-purple-100' },
     ];
 
     const StatCard = ({ label, value, icon: Icon, color, index }: any) => (
@@ -270,24 +292,30 @@ const POIMonitoringPage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             whileHover={{ y: -8, scale: 1.02 }}
-            className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl p-6 rounded-[2rem] shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-700 relative overflow-hidden group"
+            className={`bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl p-6 rounded-[2rem] shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-700 relative overflow-hidden group ${isStale ? 'opacity-60' : ''}`}
         >
+            {isStale && (
+                <div className="absolute inset-0 bg-white/10 dark:bg-gray-900/10 backdrop-blur-[1px] z-20 flex items-center justify-center">
+                    <RefreshCw className="animate-spin text-gray-300" size={24} />
+                </div>
+            )}
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-gray-50/50 to-white/50 dark:from-gray-700/30 dark:to-gray-800/30 opacity-40 rounded-bl-full -mr-6 -mt-6 group-hover:scale-110 transition-transform duration-500"></div>
 
             <div className="flex justify-between items-start relative z-10">
                 <div className={`p-4 rounded-2xl ${color} bg-opacity-20 shadow-inner group-hover:rotate-12 transition-transform duration-300`}>
                     <Icon size={28} className={color.split(' ')[0]} />
                 </div>
-                <div className="flex items-center text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg">
-                    <TrendingUp size={12} className="mr-1" />
-                    +12%
+                <div className={`flex items-center text-[10px] font-bold px-2 py-1 rounded-lg transition-colors ${isStale ? 'text-gray-400 bg-gray-100' : 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'}`}>
+                    {isStale ? 'Pending' : 'Live'}
                 </div>
             </div>
 
             <div className="mt-6 relative z-10">
                 <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">{label}</p>
                 <div className="flex items-baseline gap-1 mt-1">
-                    <h3 className="text-4xl font-black text-gray-900 dark:text-white font-display tracking-tight leading-none">{value}</h3>
+                    <h3 className={`text-4xl font-black font-display tracking-tight leading-none transition-all ${isStale ? 'text-gray-300' : 'text-gray-900 dark:text-white'}`}>
+                        {value}
+                    </h3>
                 </div>
             </div>
 
@@ -395,12 +423,15 @@ const POIMonitoringPage = () => {
                     <div className="w-48">
                         <select
                             value={selectedZone}
-                            onChange={(e) => setSelectedZone(e.target.value)}
+                            onChange={(e) => {
+                                setSelectedZone(e.target.value);
+                                setSelectedWard('All');
+                            }}
                             className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-500 rounded-lg outline-none appearance-none"
                             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1em' }}
                         >
-                            <option value="All">Zone</option>
-                            {zones.map(z => <option key={z} value={z}>{z}</option>)}
+                            <option value="All">All Zones</option>
+                            {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
                         </select>
                     </div>
 
@@ -410,9 +441,13 @@ const POIMonitoringPage = () => {
                             onChange={(e) => setSelectedWard(e.target.value)}
                             className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-500 rounded-lg outline-none appearance-none"
                             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1em' }}
+                            disabled={selectedZone === 'All'}
                         >
-                            <option value="All">Ward</option>
-                            {wards.map(w => <option key={w} value={w}>{w}</option>)}
+                            <option value="All">All Wards</option>
+                            {wards
+                                .filter(w => w.zoneName === selectedZone)
+                                .map(w => <option key={w.id} value={w.name}>{w.name}</option>)
+                            }
                         </select>
                     </div>
 
@@ -429,7 +464,7 @@ const POIMonitoringPage = () => {
                                 className="bg-transparent border-none outline-none text-[11px] w-full text-gray-500 font-bold cursor-pointer appearance-none"
                             >
                                 <option value="All">Routes {availableRoutes.length > 0 ? `(${availableRoutes.length})` : ''}</option>
-                                {availableRoutes.map(r => <option key={r} value={r}>{r}</option>)}
+                                {availableRoutes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                             </select>
                         </div>
                     </div>
@@ -512,14 +547,14 @@ const POIMonitoringPage = () => {
                 <div className="flex bg-white dark:bg-gray-900 p-1 rounded-lg border border-gray-100 dark:border-gray-800 shadow-inner">
                     <button
                         onClick={() => setViewMode('map')}
-                        className={`flex items - center gap - 2 px - 4 py - 1.5 rounded - md text - [10px] font - black uppercase tracking - widest transition - all ${viewMode === 'map' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'} `}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'map' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'}`}
                     >
                         <MapIcon size={14} />
                         Map
                     </button>
                     <button
                         onClick={() => setViewMode('list')}
-                        className={`flex items - center gap - 2 px - 4 py - 1.5 rounded - md text - [10px] font - black uppercase tracking - widest transition - all ${viewMode === 'list' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'} `}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'list' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'}`}
                     >
                         <List size={14} />
                         List
@@ -546,10 +581,14 @@ const POIMonitoringPage = () => {
                                     }
                                 />
 
+                                <MapBoundsSetter routePath={routePath} pois={filteredPOIs} />
+
+                                <KMLLayers visible={showKMLLayers} />
+
                                 {/* Base Road Layer */}
-                                {wardRoads.map((road, i) => (
+                                {wardRoads.map((road, i) => road && road.length > 0 && (
                                     <Polyline
-                                        key={`road - ${i} `}
+                                        key={`road-${i}`}
                                         positions={road}
                                         pathOptions={{
                                             color: '#94a3b8',
@@ -562,16 +601,30 @@ const POIMonitoringPage = () => {
 
                                 {routePath && (
                                     <>
-                                        {/* Planned Route Line */}
-                                        <Polyline
-                                            positions={routePath.plannedRoute}
-                                            pathOptions={{ color: '#3b82f6', weight: 4, dashArray: '10, 10', opacity: 0.5 }}
-                                        />
-                                        {/* GPS History Line */}
-                                        <Polyline
-                                            positions={routePath.gpsHistory}
-                                            pathOptions={{ color: '#10b981', weight: 6, opacity: 0.8 }}
-                                        />
+                                        {/* Handle GeoJSON Route */}
+                                        {(routePath.type === 'FeatureCollection' || routePath.type === 'Feature') ? (
+                                            <GeoJSON 
+                                                data={routePath} 
+                                                style={{ color: '#3b82f6', weight: 3, opacity: 0.8 }} 
+                                            />
+                                        ) : (
+                                            <>
+                                                {/* Planned Route Line */}
+                                                {routePath.plannedRoute && routePath.plannedRoute.length > 0 && (
+                                                    <Polyline
+                                                        positions={routePath.plannedRoute}
+                                                        pathOptions={{ color: '#3b82f6', weight: 3, opacity: 0.8 }}
+                                                    />
+                                                )}
+                                                {/* GPS History Line */}
+                                                {routePath.gpsHistory && routePath.gpsHistory.length > 0 && (
+                                                    <Polyline
+                                                        positions={routePath.gpsHistory}
+                                                        pathOptions={{ color: '#10b981', weight: 3, opacity: 0.8 }}
+                                                    />
+                                                )}
+                                            </>
+                                        )}
                                     </>
                                 )}
 
@@ -651,7 +704,7 @@ const POIMonitoringPage = () => {
                                     </div>
                                     <div className="h-px bg-gray-100 dark:bg-gray-800 my-2"></div>
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-1 bg-blue-500/30 border-t-2 border-dashed border-blue-500 rounded"></div>
+                                        <div className="w-8 h-1 bg-blue-500 rounded"></div>
                                         <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Planned Route</span>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -695,10 +748,9 @@ const POIMonitoringPage = () => {
                                                     <span className="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded-lg uppercase">{poi.ward}</span>
                                                 </td>
                                                 <td className="p-4 border-b dark:border-gray-700">
-                                                    <span className={`px - 2.5 py - 1 rounded - full text - [10px] font - black tracking - widest border ${poi.status === 'covered'
-                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800'
-                                                        : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:border-red-800'
-                                                        } `}>
+                                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-widest border ${poi.status === 'covered'
+                                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                        : 'bg-red-50 text-red-600 border-red-100'}`}>
                                                         {poi.status.toUpperCase()}
                                                     </span>
                                                 </td>
@@ -755,7 +807,7 @@ const POIMonitoringPage = () => {
                             <div className="overflow-hidden h-3 flex rounded-full bg-gray-100 dark:bg-gray-700 shadow-inner">
                                 <motion.div
                                     initial={{ width: 0 }}
-                                    animate={{ width: `${stats?.coveragePercentage}% ` }}
+                                    animate={{ width: `${stats?.coveragePercentage || 0}%` }}
                                     transition={{ duration: 1.5, ease: 'circOut' }}
                                     className="flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                                 ></motion.div>
@@ -841,7 +893,7 @@ const POIMonitoringPage = () => {
                             {/* Modal Header */}
                             <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
                                 <h2 className="text-lg font-bold text-gray-800 dark:text-white">
-                                    {activeReport} - Todays Date
+                                    {activeReport} - {new Date().toLocaleDateString()}
                                 </h2>
                                 <button
                                     onClick={() => setShowReport(false)}
@@ -855,9 +907,9 @@ const POIMonitoringPage = () => {
                                 {/* Stats Summary Row */}
                                 <div className="flex flex-wrap items-center justify-between gap-4 text-sm font-bold text-gray-600 dark:text-gray-300 px-2">
                                     <div className="flex gap-6">
-                                        <span>Total Rows : <span className="text-gray-900 dark:text-white">166</span></span>
-                                        <span>Total Unique Route Count : <span className="text-gray-900 dark:text-white">166</span></span>
-                                        <span>Covered Count : <span className="text-emerald-600">76,514</span></span>
+                                        <span>Total Rows : <span className="text-gray-900 dark:text-white">{reportData.length}</span></span>
+                                        <span>Covered Count : <span className="text-emerald-600">{reportData.filter(r => r.covered === 1).length}</span></span>
+                                        <span>Pending Count : <span className="text-red-600">{reportData.filter(r => r.pending === 1).length}</span></span>
                                     </div>
 
                                     {/* Legend */}
@@ -873,21 +925,23 @@ const POIMonitoringPage = () => {
                                 <div className="flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
                                     <select
                                         value={reportFilters.zone}
-                                        onChange={(e) => setReportFilters({ ...reportFilters, zone: e.target.value })}
+                                        onChange={(e) => setReportFilters({ ...reportFilters, zone: e.target.value, ward: '' })}
                                         className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-32"
                                     >
-                                        <option>Zone A</option>
-                                        <option>Zone B</option>
-                                        <option>Zone C</option>
+                                        <option value="">Select Zone</option>
+                                        {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
                                     </select>
                                     <select
                                         value={reportFilters.ward}
                                         onChange={(e) => setReportFilters({ ...reportFilters, ward: e.target.value })}
                                         className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-32"
+                                        disabled={!reportFilters.zone}
                                     >
-                                        <option>Ward 01</option>
-                                        <option>Ward 02</option>
-                                        <option>Ward 03</option>
+                                        <option value="">Select Ward</option>
+                                        {wards
+                                            .filter(w => w.zoneName === reportFilters.zone)
+                                            .map(w => <option key={w.id} value={w.name}>{w.name}</option>)
+                                        }
                                     </select>
                                     <select
                                         value={reportFilters.vehicle}
@@ -895,8 +949,6 @@ const POIMonitoringPage = () => {
                                         className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-40"
                                     >
                                         <option value="All">All Vehicles</option>
-                                        <option>UP85AG0770</option>
-                                        <option>UP85ET7839</option>
                                     </select>
                                     <select
                                         value={reportFilters.vType}
@@ -904,8 +956,6 @@ const POIMonitoringPage = () => {
                                         className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-48"
                                     >
                                         <option value="All">All types</option>
-                                        <option>Auto Tipper</option>
-                                        <option>Wheel Barrow</option>
                                     </select>
                                     <div className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500">
                                         <Calendar size={14} />

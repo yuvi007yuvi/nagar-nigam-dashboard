@@ -6,7 +6,7 @@ import {
     ChevronRight, Save, X, AlertCircle
 } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
-import { getAllAdminData, createAdminData, deleteAdminData, updateAdminData } from '../../services/databaseService';
+import { getAllAdminData, createAdminData, deleteAdminData, updateAdminData, createLargeDocument } from '../../services/databaseService';
 import toGeoJSON from '@mapbox/togeojson';
 
 interface MapLayer {
@@ -14,7 +14,9 @@ interface MapLayer {
     name: string;
     description: string;
     type: 'kml' | 'geojson';
-    data: any; // GeoJSON object
+    data: any; // GeoJSON string (re-assembled if chunked)
+    isChunked?: boolean;
+    featureCount?: number;
     active: boolean;
     createdAt: any;
 }
@@ -79,16 +81,20 @@ const MapLayersPage = () => {
                     geojsonData = JSON.parse(content);
                 }
 
+                const featureCount = geojsonData.features?.length || 0;
+
                 const layerData = {
                     name: newLayer.name,
                     description: newLayer.description,
                     type: newLayer.file!.name.endsWith('.kml') ? 'kml' : 'geojson',
-                    data: JSON.stringify(geojsonData), // Stringify to avoid Firestore nested array error
+                    data: JSON.stringify(geojsonData),
+                    featureCount: featureCount,
                     active: true
                 };
 
-
-                const result = await createAdminData('mapLayers', layerData);
+                // Use createLargeDocument which handles chunking if content > 1MB
+                const result = await createLargeDocument('mapLayers', layerData, 'data');
+                
                 if (result.success) {
                     setShowUploadModal(false);
                     setNewLayer({ name: '', description: '', file: null });
@@ -201,14 +207,18 @@ const MapLayersPage = () => {
                                             {layer.type}
                                         </span>
                                         <span className="text-[10px] font-black px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded uppercase tracking-widest">
-                                            {(() => {
-                                                try {
-                                                    const d = typeof layer.data === 'string' ? JSON.parse(layer.data) : layer.data;
-                                                    return (d.features?.length || 0) + ' Features';
-                                                } catch (e) {
-                                                    return '0 Features';
-                                                }
-                                            })()}
+                                            {layer.featureCount !== undefined ? (
+                                                `${layer.featureCount} Features`
+                                            ) : (
+                                                (() => {
+                                                    try {
+                                                        const d = typeof layer.data === 'string' ? JSON.parse(layer.data) : layer.data;
+                                                        return (d.features?.length || 0) + ' Features';
+                                                    } catch (e) {
+                                                        return '0 Features';
+                                                    }
+                                                })()
+                                            )}
                                         </span>
 
                                     </div>

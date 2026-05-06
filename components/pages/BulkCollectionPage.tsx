@@ -25,6 +25,8 @@ const BulkCollectionPage = () => {
     const [qrModalSite, setQrModalSite] = useState<any>(null);
     const [bulkSites, setBulkSites] = useState<any[]>([]);
     const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
+    const [filterZone, setFilterZone] = useState('All');
+    const [filterWard, setFilterWard] = useState('All');
     
     // Collection workflow state
     const [collectionStep, setCollectionStep] = useState(1);
@@ -246,6 +248,42 @@ const BulkCollectionPage = () => {
                         </div>
                     ) : (
                         <div className="p-6">
+                            <div className="flex flex-wrap items-center gap-4 mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                                <div className="flex items-center gap-2">
+                                    <Filter size={16} className="text-gray-400" />
+                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Filters:</span>
+                                </div>
+                                <select
+                                    value={filterZone}
+                                    onChange={(e) => {
+                                        setFilterZone(e.target.value);
+                                        setFilterWard('All');
+                                    }}
+                                    className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-500 rounded-lg outline-none"
+                                >
+                                    <option value="All">All Zones</option>
+                                    {zones.map((z: any) => <option key={z.id} value={z.name}>{z.name}</option>)}
+                                </select>
+                                <select
+                                    value={filterWard}
+                                    onChange={(e) => setFilterWard(e.target.value)}
+                                    className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-500 rounded-lg outline-none"
+                                    disabled={filterZone === 'All'}
+                                >
+                                    <option value="All">All Wards</option>
+                                    {wards
+                                        .filter((w: any) => w.zoneName === filterZone)
+                                        .map((w: any) => <option key={w.id} value={w.name}>{w.name}</option>)
+                                    }
+                                </select>
+                                <button 
+                                    onClick={handleExportCSV}
+                                    className="ml-auto flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-black transition-all"
+                                >
+                                    <Download size={14} /> Export CSV
+                                </button>
+                            </div>
+
                             <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
                                 <table className="w-full text-left">
                                     <thead className="bg-gray-50 border-b border-gray-100">
@@ -258,35 +296,48 @@ const BulkCollectionPage = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
-                                        {bulkCollections.map((col: any) => (
-                                            <tr key={col.id} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <p className="font-bold text-gray-800">{col.siteName}</p>
-                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{col.ward}</p>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <img src={col.beforeImage} className="w-12 h-12 rounded-lg object-cover border-2 border-white shadow-sm ring-1 ring-gray-100" />
-                                                        <ArrowRight size={14} className="text-gray-300" />
-                                                        <img src={col.afterImage} className="w-12 h-12 rounded-lg object-cover border-2 border-white shadow-sm ring-1 ring-gray-100" />
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                            <div className={`h-full ${col.fillLevel > 80 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${col.fillLevel}%` }}></div>
+                                        {bulkCollections
+                                            .filter((col: any) => {
+                                                const zoneMatch = filterZone === 'All' || col.zone === filterZone;
+                                                const wardMatch = filterWard === 'All' || col.ward === filterWard;
+                                                return zoneMatch && wardMatch;
+                                            })
+                                            .map((col: any) => (
+                                                <tr key={col.id} className="hover:bg-gray-50/50 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                                                                <Building2 size={16} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-gray-800">{col.siteName}</p>
+                                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{col.ward}</p>
+                                                            </div>
                                                         </div>
-                                                        <span className="text-[10px] font-black text-gray-700">{col.fillLevel}%</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-xs font-bold text-gray-600">
-                                                    {col.createdAt?.toDate ? col.createdAt.toDate().toLocaleString() : 'Just now'}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[9px] font-black uppercase tracking-widest">Verified</span>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <img src={col.beforeImage} className="w-12 h-12 rounded-lg object-cover border-2 border-white shadow-sm ring-1 ring-gray-100" />
+                                                            <ArrowRight size={14} className="text-gray-300" />
+                                                            <img src={col.afterImage} className="w-12 h-12 rounded-lg object-cover border-2 border-white shadow-sm ring-1 ring-gray-100" />
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                                <div className={`h-full ${col.fillLevel > 80 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${col.fillLevel}%` }}></div>
+                                                            </div>
+                                                            <span className="text-[10px] font-black text-gray-700">{col.fillLevel}%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-xs font-bold text-gray-600">
+                                                        {col.createdAt?.toDate ? col.createdAt.toDate().toLocaleString() : 'Just now'}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[9px] font-black uppercase tracking-widest">Verified</span>
+                                                    </td>
+                                                </tr>
+                                            ))}
                                     </tbody>
                                 </table>
                             </div>

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
     User, Shield, Users, Plus, RefreshCw, Settings, Database, 
     Bell, BarChart3, Lock, Key, Monitor, Truck, Map as MapIcon,
-    QrCode, ClipboardCheck
+    QrCode, ClipboardCheck, Navigation, Layers
 } from 'lucide-react';
 
 import PageHeader from '../shared/PageHeader';
@@ -43,6 +43,13 @@ const AdminPage = ({ currentUser }: { currentUser: any }) => {
             path: '/qr-data'
         },
         {
+            title: 'Zone & Ward Master',
+            description: 'Define and manage municipal zones and wards',
+            icon: MapIcon,
+            color: 'bg-emerald-600',
+            path: '/zone-ward-master'
+        },
+        {
             title: 'System Settings',
             description: 'Configure system-wide settings',
             icon: Settings,
@@ -69,6 +76,34 @@ const AdminPage = ({ currentUser }: { currentUser: any }) => {
             icon: Truck,
             color: 'bg-indigo-600',
             path: '/bulk-collection'
+        },
+        {
+            title: 'Property Type Master',
+            description: 'Define property categories and monthly user charges',
+            icon: Layers,
+            color: 'bg-blue-500',
+            path: '/property-type-master'
+        },
+        {
+            title: 'Property-wise Checking',
+            description: 'Audit customers and upload official rate gazette',
+            icon: ClipboardCheck,
+            color: 'bg-emerald-600',
+            path: '/property-wise-checking'
+        },
+        {
+            title: 'Route Master',
+            description: 'Upload and manage ward-specific vehicle routes',
+            icon: Navigation,
+            color: 'bg-emerald-600',
+            path: '/route-master'
+        },
+        {
+            title: 'Bulk Customer Upload',
+            description: 'Import thousands of customers via CSV/Excel',
+            icon: Users,
+            color: 'bg-orange-600',
+            path: '/bulk-customer-upload'
         },
         {
             title: 'Database Management',

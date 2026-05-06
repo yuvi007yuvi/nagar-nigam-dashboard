@@ -621,17 +621,7 @@ const VehicleHistoryPage: React.FC = () => {
             )}
           </AnimatePresence>
 
-          {!selectedImei && !loading && (
-            <div className="absolute inset-0 z-[1001] bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-[2px] flex items-center justify-center pointer-events-none">
-              <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 text-center max-w-sm">
-                <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-600">
-                  <Navigation size={32} />
-                </div>
-                <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">Ready to Track</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Please select a vehicle from the list on the left to visualize its route history.</p>
-              </div>
-            </div>
-          )}
+
 
           {loading && (
             <div className="absolute inset-0 z-[1001] bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm flex items-center justify-center">

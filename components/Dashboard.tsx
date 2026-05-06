@@ -123,21 +123,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
 
   // Calculate vehicle statistics
   const vehicleStats = useMemo(() => {
-    const total = vehicles.length;
+    const total = registeredVehicles.length;
+    const active = vehicles.length;
     const running = vehicles.filter(v => parseInt(v.speed) > 0).length;
     const stopped = vehicles.filter(v => parseInt(v.speed) === 0).length;
+    const offline = total - active;
 
     return {
       total,
+      active,
       running,
       stopped,
+      offline,
       widgetData: [
         { label: 'Total', value: total, color: 'bg-purple-100 text-purple-700' },
         { label: 'Running', value: running, color: 'bg-green-100 text-green-700' },
-        { label: 'Stopped', value: stopped, color: 'bg-gray-100 text-gray-700' }
+        { label: 'Stopped', value: stopped, color: 'bg-amber-100 text-amber-700' },
+        { label: 'Offline', value: offline, color: 'bg-gray-100 text-gray-700' }
       ]
     };
-  }, [vehicles]);
+  }, [vehicles, registeredVehicles]);
 
 
   // Stagger container for children
@@ -258,6 +263,58 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
     return { total, visited };
   }, [coverageRecords]);
 
+  // Calculate ward performance for TopWardsWidget
+  const wardPerformance = useMemo(() => {
+    if (!customers.length) return [];
+    
+    // 1. Group customers by ward to get denominator
+    const wardPOIs: Record<string, number> = {};
+    customers.forEach(c => {
+      if (c.ward) {
+        wardPOIs[c.ward] = (wardPOIs[c.ward] || 0) + 1;
+      }
+    });
+
+    // 2. Count unique customer visits per ward today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const wardScans: Record<string, Set<string>> = {};
+    coverageRecords.forEach(record => {
+      try {
+        const recordDate = record.createdAt?.toDate ? record.createdAt.toDate() : new Date(record.createdAt);
+        if (recordDate >= today) {
+          // Find ward for this customer - try both ID and custom ID fields
+          const customer = customers.find(c => c.id === record.customerId || c.customerId === record.customerId);
+          if (customer && customer.ward) {
+            if (!wardScans[customer.ward]) wardScans[customer.ward] = new Set();
+            wardScans[customer.ward].add(record.customerId);
+          }
+        }
+      } catch (e) {
+        // Skip invalid dates
+      }
+    });
+
+    // 3. Calculate score per ward
+    const performance = Object.keys(wardPOIs).map(wardName => {
+      const total = wardPOIs[wardName];
+      const scanned = wardScans[wardName]?.size || 0;
+      const score = Math.min(100, Math.round((scanned / total) * 100));
+      
+      return {
+        name: wardName,
+        score: score,
+        trend: score > 80 ? 'up' : 'neutral'
+      };
+    });
+
+    // 4. Return top 3
+    return performance
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+  }, [customers, coverageRecords]);
+
   return (
     <motion.div
       className="space-y-8 pb-8"
@@ -347,7 +404,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
             delay={0.1}
           />
           <ColoredStatCard
-            title="Active Vehicles"
+            title="Total Vehicles"
             value={vehicleStats.total}
             image={vehicle3D}
             icon={Truck}
@@ -398,7 +455,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
             <CustomerChart data={customerSummary} />
           </div>
           <div className="h-[240px] lg:col-span-1">
-            <TopWardsWidget />
+            <TopWardsWidget data={wardPerformance} />
           </div>
         </div>
       </div>

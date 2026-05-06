@@ -4,6 +4,7 @@ import { Truck, Plus, Search, Edit2, Trash2, X, Check, Filter, Info, Smartphone,
 import PageHeader from '../shared/PageHeader';
 import { createAdminData, getAllAdminData, updateAdminData, deleteAdminData } from '../../services/databaseService';
 import { useLiveTracking } from '../../services/vehicleService';
+import { useData } from '../../services/DataContext';
 
 interface Vehicle {
     id: string;
@@ -30,6 +31,7 @@ const VehicleMasterPage = () => {
     const [showUnknownModal, setShowUnknownModal] = useState(false);
     const [isAddingAll, setIsAddingAll] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+    const { zones: dynamicZones, wards: dynamicWards } = useData();
 
     const [formData, setFormData] = useState({
         imei: '',
@@ -46,8 +48,8 @@ const VehicleMasterPage = () => {
     });
 
     const vehicleTypes = ['Compactor', 'Tipper', 'JCB', 'Magic', 'Tractor', 'E-Rickshaw'];
-    const zones = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5'];
-    const wards = Array.from({ length: 70 }, (_, i) => `Ward ${String(i + 1).padStart(2, '0')}`);
+    const zones = dynamicZones.map(z => z.name);
+    const wards = dynamicWards.map(w => w.name);
 
     useEffect(() => {
         fetchVehicles();
@@ -647,9 +649,10 @@ const VehicleMasterPage = () => {
                                         <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Assigned Zone</label>
                                         <select
                                             value={formData.zone}
-                                            onChange={(e) => setFormData({...formData, zone: e.target.value})}
+                                            onChange={(e) => setFormData({...formData, zone: e.target.value, ward: ''})}
                                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 transition-all border-none cursor-pointer"
                                         >
+                                            <option value="">Select Zone</option>
                                             {zones.map(z => <option key={z} value={z}>{z}</option>)}
                                         </select>
                                     </div>
@@ -659,8 +662,13 @@ const VehicleMasterPage = () => {
                                             value={formData.ward}
                                             onChange={(e) => setFormData({...formData, ward: e.target.value})}
                                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 transition-all border-none cursor-pointer"
+                                            disabled={!formData.zone}
                                         >
-                                            {wards.map(w => <option key={w} value={w}>{w}</option>)}
+                                            <option value="">Select Ward</option>
+                                            {dynamicWards
+                                                .filter(w => w.zoneName === formData.zone)
+                                                .map(w => <option key={w.id} value={w.name}>{w.name}</option>)
+                                            }
                                         </select>
                                     </div>
                                     <div className="col-span-full grid grid-cols-2 gap-6 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl">

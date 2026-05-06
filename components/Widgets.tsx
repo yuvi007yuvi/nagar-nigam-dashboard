@@ -198,7 +198,7 @@ export const ComplaintChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
           <div className="flex items-center w-full gap-4">
             {/* Chart Container */}
             <div className="relative w-[140px] h-[140px] flex-shrink-0" style={{ minHeight: '140px' }}>
-              <ResponsiveContainer width="100%" height="100%" minHeight={140}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={140}>
                 <PieChart>
                   <Pie
                     data={data}
@@ -279,7 +279,7 @@ export const BulkCollectionChart: React.FC<{ data?: { segments: any[], binStatus
           <div className="absolute inset-0 opacity-5 pointer-events-none flex items-center justify-center">
             <BinIllustration className="w-24 h-24" />
           </div>
-          <ResponsiveContainer width="100%" height="100%" minHeight={105}>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={105}>
             <PieChart>
               <Pie
                 data={segments}
@@ -413,7 +413,7 @@ export const CustomerChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
           <div className="flex items-center w-full gap-4">
             {/* Chart Container */}
             <div className="relative w-[130px] h-[130px] flex-shrink-0" style={{ minHeight: '130px' }}>
-              <ResponsiveContainer width="100%" height="100%" minHeight={130}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={130}>
                 <PieChart>
                   <Pie
                     data={data}
@@ -538,11 +538,9 @@ export const QuickActionCard: React.FC<{ title: string, icon: React.ElementType,
 };
 
 // --- Top Performing Wards Widget ---
-export const TopWardsWidget: React.FC = () => {
-  const wards = [
-    { name: 'Ward 12', score: 98, trend: 'up' },
-    { name: 'Ward 05', score: 95, trend: 'up' },
-    { name: 'Ward 21', score: 92, trend: 'down' },
+export const TopWardsWidget: React.FC<{ data?: { name: string, score: number, trend: string }[] }> = ({ data = [] }) => {
+  const wards = data.length > 0 ? data : [
+    { name: 'N/A', score: 0, trend: 'neutral' },
   ];
 
   return (

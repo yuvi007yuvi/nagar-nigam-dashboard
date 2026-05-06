@@ -12,7 +12,8 @@ import {
   where,
   orderBy,
   limit,
-  Timestamp
+  Timestamp,
+  writeBatch
 } from 'firebase/firestore';
 
 // Generic functions for CRUD operations
@@ -109,6 +110,72 @@ export const deleteDocument = async (collectionName: string, id: string) => {
   try {
     await deleteDoc(doc(db, collectionName, id));
     return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+// Create a large document by chunking (to bypass 1MB limit)
+export const createLargeDocument = async (collectionName: string, data: any, largeField: string) => {
+  try {
+    const fullContent = data[largeField];
+    if (typeof fullContent !== 'string') {
+      return createDocument(collectionName, data);
+    }
+
+    // Remove the large field from main data
+    const metadata = { ...data };
+    delete metadata[largeField];
+    
+    // 1. Create the main document
+    const mainResult = await createDocument(collectionName, {
+      ...metadata,
+      isChunked: true,
+      dataSize: fullContent.length
+    });
+
+    if (!mainResult.success) return mainResult;
+    const docId = mainResult.id!;
+
+    // 2. Split content into chunks (800KB each to be safe)
+    const chunkSize = 800 * 1024;
+    const chunks: string[] = [];
+    for (let i = 0; i < fullContent.length; i += chunkSize) {
+      chunks.push(fullContent.substring(i, i + chunkSize));
+    }
+
+    // 3. Save chunks in subcollection
+    const batch = writeBatch(db);
+    chunks.forEach((chunk, index) => {
+      const chunkRef = doc(db, collectionName, docId, 'chunks', index.toString());
+      batch.set(chunkRef, { content: chunk, index });
+    });
+
+    await batch.commit();
+    return { success: true, id: docId };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+// Get a large document and reassemble its chunks
+export const getLargeDocument = async (collectionName: string, id: string, largeField: string) => {
+  try {
+    const mainDoc = await getDocumentById(collectionName, id);
+    if (!mainDoc.success) return mainDoc;
+
+    const data: any = mainDoc.data;
+    if (!data.isChunked) return mainDoc;
+
+    // Fetch all chunks
+    const chunksSnapshot = await getDocs(query(collection(db, collectionName, id, 'chunks'), orderBy('index')));
+    let fullContent = '';
+    chunksSnapshot.forEach(doc => {
+      fullContent += doc.data().content;
+    });
+
+    data[largeField] = fullContent;
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

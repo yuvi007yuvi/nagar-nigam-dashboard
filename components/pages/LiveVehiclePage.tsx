@@ -17,6 +17,7 @@ import KMLLayers from '../shared/KMLLayers';
 import MapSettingsOverlay from '../shared/MapSettingsOverlay';
 import { getAuth } from 'firebase/auth';
 import { useVehicleData } from '../../services/vehicleService';
+import { useData } from '../../services/DataContext';
 import vehicleTopDown from '../images/top-down-vehicle.png';
 import vehicleStoppedTopDown from '../images/top-down-vehicle-stopped.png';
 import vehicleOfflineTopDown from '../images/top-down-vehicle-offline.png';
@@ -67,6 +68,7 @@ const getVehicleIcon = (speed: string | number, angle: string | number = 0, name
 // --- Live Vehicle Page ---
 const LiveVehiclePage = () => {
     const { vehicles: liveVehicles, loading: liveLoading, error, refetch } = useVehicleData();
+    const { zones: dynamicZones, wards: dynamicWards } = useData();
     const [registeredVehicles, setRegisteredVehicles] = useState<any[]>([]);
     const [isRegLoading, setIsRegLoading] = useState(true);
 
@@ -94,8 +96,8 @@ const LiveVehiclePage = () => {
     const [reportData, setReportData] = useState<any[]>([]);
     const [activeReport, setActiveReport] = useState<string>('');
     const [reportFilters, setReportFilters] = useState({
-        zone: 'Zone A',
-        ward: 'Ward 01',
+        zone: '',
+        ward: '',
         vehicle: 'All',
         vType: 'All',
         startDate: '2026-03-07',
@@ -422,21 +424,23 @@ const LiveVehiclePage = () => {
                                 <div className="flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
                                     <select
                                         value={reportFilters.zone}
-                                        onChange={(e) => setReportFilters({ ...reportFilters, zone: e.target.value })}
+                                        onChange={(e) => setReportFilters({ ...reportFilters, zone: e.target.value, ward: '' })}
                                         className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-32"
                                     >
-                                        <option>Zone A</option>
-                                        <option>Zone B</option>
-                                        <option>Zone C</option>
+                                        <option value="">Select Zone</option>
+                                        {dynamicZones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
                                     </select>
                                     <select
                                         value={reportFilters.ward}
                                         onChange={(e) => setReportFilters({ ...reportFilters, ward: e.target.value })}
                                         className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-32"
+                                        disabled={!reportFilters.zone}
                                     >
-                                        <option>Ward 01</option>
-                                        <option>Ward 02</option>
-                                        <option>Ward 03</option>
+                                        <option value="">Select Ward</option>
+                                        {dynamicWards
+                                            .filter(w => w.zoneName === reportFilters.zone)
+                                            .map(w => <option key={w.id} value={w.name}>{w.name}</option>)
+                                        }
                                     </select>
                                     <select
                                         value={reportFilters.vehicle}

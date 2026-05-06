@@ -36,7 +36,13 @@ const MapLayersPage = lazy(() => import('./components/pages/MapLayersPage'));
 const VehicleHistoryPage = lazy(() => import('./components/pages/VehicleHistoryPage'));
 const VehicleMasterPage = lazy(() => import('./components/pages/VehicleMasterPage'));
 const RoleAssignmentPage = lazy(() => import('./components/pages/RoleAssignmentPage'));
-const SiteMasterPage = lazy(() => import('./components/pages/SiteMasterPage'));
+const QRDataPage = lazy(() => import('./components/pages/QRDataPage'));
+const ZoneWardMasterPage = lazy(() => import('./components/pages/ZoneWardMasterPage'));
+const RouteMasterPage = lazy(() => import('./components/pages/RouteMasterPage'));
+const PropertyTypeMasterPage = lazy(() => import('./components/pages/PropertyTypeMasterPage'));
+const PropertyWiseCheckingPage = lazy(() => import('./components/pages/PropertyWiseCheckingPage'));
+const DataMigrationPage = lazy(() => import('./components/pages/DataMigrationPage'));
+const BulkCustomerUploadPage = lazy(() => import('./components/pages/BulkCustomerUploadPage'));
 
 
 function App() {
@@ -198,7 +204,33 @@ function App() {
                 } />
                 <Route path="/qr-data" element={
                   <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
-                    <SiteMasterPage />
+                    <QRDataPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/zone-ward-master" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <ZoneWardMasterPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/route-master" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <RouteMasterPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/property-type-master" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <PropertyTypeMasterPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/property-wise-checking" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <PropertyWiseCheckingPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/migrate-data" element={<DataMigrationPage />} />
+                <Route path="/bulk-customer-upload" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <BulkCustomerUploadPage />
                   </ProtectedRoute>
                 } />
 

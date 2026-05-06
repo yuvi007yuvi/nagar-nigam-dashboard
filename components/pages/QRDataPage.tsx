@@ -30,12 +30,13 @@ interface Site {
     buildingStreet?: string;
 }
 
-const SiteMasterPage = () => {
+const QRDataPage = () => {
     const { zones, wards } = useData();
     const [sites, setSites] = useState<Site[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [qrModalSite, setQrModalSite] = useState<Site | null>(null);
     
     // Form State
     const [formData, setFormData] = useState({
@@ -152,13 +153,25 @@ const SiteMasterPage = () => {
 
             {/* Filters Bar */}
             <div className="bg-[#f8fff9] dark:bg-gray-800/50 p-4 rounded-xl border border-[#e0f2e1] dark:border-gray-700 flex flex-wrap gap-4 items-center">
-                <select className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm min-w-[150px] outline-none focus:ring-2 focus:ring-[#27ae60]/20">
-                    <option value="">Zone</option>
-                    {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+                <select 
+                    value={formData.zone}
+                    onChange={(e) => setFormData({...formData, zone: e.target.value, ward: ''})}
+                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm min-w-[150px] outline-none focus:ring-2 focus:ring-[#27ae60]/20"
+                >
+                    <option value="">All Zones</option>
+                    {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
                 </select>
-                <select className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm min-w-[150px] outline-none focus:ring-2 focus:ring-[#27ae60]/20">
+                <select 
+                    value={formData.ward}
+                    onChange={(e) => setFormData({...formData, ward: e.target.value})}
+                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm min-w-[150px] outline-none focus:ring-2 focus:ring-[#27ae60]/20"
+                    disabled={!formData.zone}
+                >
                     <option value="">All Wards</option>
-                    {wards.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    {wards
+                        .filter(w => w.zoneName === formData.zone)
+                        .map(w => <option key={w.id} value={w.name}>{w.name}</option>)
+                    }
                 </select>
                 <select className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm min-w-[150px] outline-none focus:ring-2 focus:ring-[#27ae60]/20">
                     <option value="">Type</option>
@@ -226,7 +239,10 @@ const SiteMasterPage = () => {
                                             {site.createdAt ? new Date(site.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                                         </td>
                                         <td className="px-4 py-4 text-center">
-                                            <button className="p-1.5 bg-[#e8f5e9] text-[#27ae60] rounded hover:bg-[#c8e6c9] transition-colors">
+                                            <button 
+                                                onClick={() => setQrModalSite(site)}
+                                                className="p-1.5 bg-[#e8f5e9] text-[#27ae60] rounded hover:bg-[#c8e6c9] transition-colors"
+                                            >
                                                 <QrCode size={18} />
                                             </button>
                                         </td>
@@ -265,11 +281,11 @@ const SiteMasterPage = () => {
                                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Zone & Circle</label>
                                     <select 
                                         value={formData.zone}
-                                        onChange={(e) => setFormData({...formData, zone: e.target.value})}
+                                        onChange={(e) => setFormData({...formData, zone: e.target.value, ward: ''})}
                                         className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20"
                                     >
-                                        <option value="">Zone & Circle</option>
-                                        {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+                                        <option value="">Select Zone</option>
+                                        {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
                                     </select>
                                 </div>
 
@@ -279,9 +295,13 @@ const SiteMasterPage = () => {
                                         value={formData.ward}
                                         onChange={(e) => setFormData({...formData, ward: e.target.value})}
                                         className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                        disabled={!formData.zone}
                                     >
-                                        <option value="">Ward</option>
-                                        {wards.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                        <option value="">Select Ward</option>
+                                        {wards
+                                            .filter(w => w.zoneName === formData.zone)
+                                            .map(w => <option key={w.id} value={w.name}>{w.name}</option>)
+                                        }
                                     </select>
                                 </div>
 
@@ -375,8 +395,47 @@ const SiteMasterPage = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* QR Code Modal */}
+            <AnimatePresence>
+                {qrModalSite && (
+                    <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center"
+                        >
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-lg font-bold">Site QR Code</h3>
+                                <button onClick={() => setQrModalSite(null)} className="p-1 hover:bg-gray-100 rounded-full">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            
+                            <div className="bg-white p-4 rounded-xl border-2 border-dashed border-gray-200 inline-block mb-6">
+                                <QrCode size={200} className="text-gray-900" />
+                            </div>
+
+                            <div className="space-y-1 mb-8">
+                                <p className="font-bold text-lg">{qrModalSite.siteName}</p>
+                                <p className="text-sm text-gray-500 font-mono">{qrModalSite.qrId}</p>
+                                <p className="text-xs text-gray-400">{qrModalSite.zone} - {qrModalSite.ward}</p>
+                            </div>
+
+                            <button 
+                                onClick={() => window.print()}
+                                className="w-full py-3 bg-[#27ae60] text-white rounded-xl font-bold hover:bg-[#219150] transition-all flex items-center justify-center gap-2"
+                            >
+                                <Download size={18} />
+                                Print QR Code
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
 
-export default SiteMasterPage;
+export default QRDataPage;
