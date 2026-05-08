@@ -22,6 +22,7 @@ import vehicleStopped3D from './images/3d-vehicle-stopped.png';
 import vehicleOffline3D from './images/3d-vehicle-offline.png';
 import bin3D from './images/3d-bin.png';
 
+
 // Fix for default marker icon
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -35,26 +36,60 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-const getVehicleIcon = (speed: string | number) => {
+const getVehicleIcon = (speed: string | number, angle: string | number = 0, name: string = '') => {
   const s = typeof speed === 'string' ? parseInt(speed) : speed;
   const isMoving = s > 0;
   const color = isMoving ? '#10b981' : '#f59e0b'; // Emerald for moving, Amber for stopped
+  const a = typeof angle === 'string' ? parseFloat(angle) : angle;
+  const isTruck = name.toLowerCase().includes('compactor') || name.toLowerCase().includes('truck');
+  const isTipper = name.toLowerCase().includes('tipper') || name.toLowerCase().includes('auto');
+  
+  const size = isTruck ? 30 : 24;
 
   return new L.DivIcon({
     className: 'custom-vehicle-marker',
     html: `
-      <div style="position: relative;">
-        <div style="background-color: ${color}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5"/><path d="M14 17h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>
+      <div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+        <div style="transform: rotate(${a}deg); transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 10;">
+          <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+            ${isTruck ? `
+              <!-- Truck Chassis -->
+              <rect x="18" y="8" width="28" height="48" rx="2" fill="${color}" fill-opacity="0.8"/>
+              <!-- Compactor Body -->
+              <path d="M20 22H44V50C44 51.1046 43.1046 52 42 52H22C20.8954 52 20 51.1046 20 50V22Z" fill="${color}"/>
+              <!-- Rear Hopper -->
+              <path d="M20 50H44V54C44 55.1046 43.1046 56 42 56H22C20.8954 56 20 55.1046 20 54V50Z" fill="${color}" fill-opacity="0.9"/>
+              <!-- Cab Section -->
+              <rect x="20" y="10" width="24" height="12" rx="2" fill="${color}"/>
+              <!-- Windshield -->
+              <path d="M22 11.5C22 10.9477 22.4477 10.5 23 10.5H41C41.5523 10.5 42 10.9477 42 11.5V15C42 16.1046 41.1046 17 40 17H24C22.8954 17 22 16.1046 22 15V11.5Z" fill="#bae6fd" fill-opacity="0.9"/>
+              <!-- Wheels -->
+              <rect x="15" y="14" width="4" height="10" rx="1" fill="#111827"/>
+              <rect x="45" y="14" width="4" height="10" rx="1" fill="#111827"/>
+              <rect x="15" y="40" width="4" height="12" rx="1" fill="#111827"/>
+              <rect x="45" y="40" width="4" height="12" rx="1" fill="#111827"/>
+            ` : `
+              <!-- Tipper Chassis -->
+              <rect x="22" y="12" width="20" height="40" rx="1" fill="${color}" fill-opacity="0.8"/>
+              <!-- Tipper Bed -->
+              <path d="M24 24H40V48C40 49.1046 39.1046 50 38 50H26C24.8954 50 24 49.1046 24 48V24Z" fill="${color}"/>
+              <!-- Cab -->
+              <rect x="23" y="14" width="18" height="10" rx="1" fill="${color}"/>
+              <!-- Windshield -->
+              <rect x="24.5" y="15" width="15" height="4" rx="0.5" fill="#bae6fd" fill-opacity="0.9"/>
+              <!-- Wheels -->
+              <rect x="19" y="16" width="3" height="6" rx="0.5" fill="#111827"/>
+              <rect x="42" y="16" width="3" height="6" rx="0.5" fill="#111827"/>
+              <rect x="19" y="42" width="3" height="8" rx="0.5" fill="#111827"/>
+              <rect x="42" y="42" width="3" height="8" rx="0.5" fill="#111827"/>
+            `}
           </svg>
         </div>
-        ${isMoving ? `<div style="position: absolute; inset: -4px; border-radius: 50%; border: 2px solid ${color}; opacity: 0.4; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>` : ''}
       </div>
     `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -16]
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -20]
   });
 };
 
@@ -170,6 +205,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
     customers,
     coverageRecords,
     fuelEntries,
+    weighments,
     loading: dataLoading 
   } = useData();
 
@@ -235,33 +271,67 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
   }, [fuelEntries]);
   
   const bulkCollectionData = useMemo(() => {
-    // Process bulk collections for the widget
-    const counts: Record<string, number> = {};
-    bulkCollections.forEach(r => {
-      counts[r.site || 'Other'] = (counts[r.site || 'Other'] || 0) + 1;
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+    let today = 0, yesterday = 0, tillMonth = 0, prevMonth = 0;
+
+    bulkCollections.forEach((r: any) => {
+      const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+      if (d >= todayStart) {
+        today++;
+      } else if (d >= yesterdayStart && d < todayStart) {
+        yesterday++;
+      }
+      if (d >= thisMonthStart) {
+        tillMonth++;
+      }
+      if (d >= prevMonthStart && d <= prevMonthEnd) {
+        prevMonth++;
+      }
     });
 
-    const segments = Object.entries(counts).slice(0, 4).map(([name, value], idx) => ({
-      name,
-      value,
-      color: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'][idx % 4]
-    }));
+    const segments = [
+      { name: 'Today', value: today, color: '#8b5cf6' },
+      { name: 'Yesterday', value: yesterday, color: '#f43f5e' },
+      { name: 'Till Month', value: tillMonth, color: '#10b981' },
+      { name: 'Previous Month', value: prevMonth, color: '#22c55e' },
+    ];
 
-    // For bin status, show the most recent fill levels
-    const binStatus = bulkCollections.slice(0, 4).map((r, idx) => ({
-      location: r.site || 'Unknown Site',
-      fill: parseInt(r.fill) || 0,
-      color: parseInt(r.fill) > 80 ? 'bg-rose-500' : 'bg-emerald-500'
-    }));
-
-    return { segments, binStatus };
+    return { segments };
   }, [bulkCollections]);
 
   const poiSummary = useMemo(() => {
-    const total = coverageRecords.length || 0;
-    const visited = coverageRecords.filter(r => r.status === 'Visited' || r.visited).length;
-    return { total, visited };
-  }, [coverageRecords]);
+    const allTotal = customers.length;
+    const assigned = customers.filter(c => c.routeId && c.routeId !== '' && c.routeId !== 'Unassigned');
+    const assignedTotal = assigned.length;
+    
+    // Calculate visited based on today's coverage records
+    const today = new Date().toDateString();
+    const coveredTodayIds = new Set(
+        coverageRecords
+            .filter(r => {
+                const rDate = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+                return rDate.toDateString() === today;
+            })
+            .map(r => r.customerId)
+    );
+    
+    const visited = assigned.filter(c => coveredTodayIds.has(c.customerId || c.id)).length;
+    
+    return { total: allTotal, assigned: assignedTotal, visited };
+  }, [customers, coverageRecords]);
+
+  const wasteCollected = useMemo(() => {
+    const totalKg = weighments.reduce((sum, w) => sum + (parseFloat(w.netWeight) || 0), 0);
+    const tons = totalKg / 1000;
+    return `${tons.toFixed(1)} Ton`;
+  }, [weighments]);
 
   // Calculate ward performance for TopWardsWidget
   const wardPerformance = useMemo(() => {
@@ -397,7 +467,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <ColoredStatCard
             title="Waste Collected"
-            value="42.5 Ton"
+            value={wasteCollected}
             image={bin3D}
             icon={Recycle}
             color="bg-gradient-to-br from-blue-500 to-blue-700"
@@ -436,25 +506,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
           Operational Overview
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="h-[240px]">
+          <div className="min-h-[240px]">
             <VehicleStatusWidget data={vehicleStats.widgetData} />
           </div>
-          <div className="h-[240px]">
+          <div className="min-h-[240px]">
             <UserChargeWidget data={userChargeSummary} />
           </div>
-          <div className="h-[240px]">
+          <div className="min-h-[240px]">
             <ComplaintChart data={complaintSummary} />
           </div>
-          <div className="h-[240px]">
+          <div className="min-h-[240px]">
             <BulkCollectionChart data={bulkCollectionData} />
           </div>
-          <div className="h-[240px]">
-            <POIWidget total={poiSummary.total} visited={poiSummary.visited} />
+          <div className="min-h-[240px]">
+            <POIWidget total={poiSummary.total} assigned={poiSummary.assigned} visited={poiSummary.visited} />
           </div>
-          <div className="h-[240px]">
+          <div className="min-h-[240px]">
             <CustomerChart data={customerSummary} />
           </div>
-          <div className="h-[240px] lg:col-span-1">
+          <div className="min-h-[240px] lg:col-span-1">
             <TopWardsWidget data={wardPerformance} />
           </div>
         </div>
@@ -540,7 +610,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
                 <Marker
                   key={`${vehicle.imei}-${idx}`}
                   position={[parseFloat(vehicle.lat), parseFloat(vehicle.lng)]}
-                  icon={getVehicleIcon(vehicle.speed)}
+                  icon={getVehicleIcon(vehicle.speed, vehicle.angle, vehicle.name)}
                 >
                   <Popup className="glass-popup">
                     <div className="p-2 min-w-[150px]">

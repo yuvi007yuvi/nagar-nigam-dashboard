@@ -204,14 +204,6 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, title, userId }) => {
                       My Profile
                     </button>
                     <button
-                      onClick={() => navigate('/settings')}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 hover:text-emerald-700 dark:hover:text-emerald-400 rounded-xl transition-colors"
-                    >
-                      <Shield size={18} />
-                      Settings
-                    </button>
-                    <div className="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
-                    <button
                       onClick={handleLogout}
                       className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
                     >

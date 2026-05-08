@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Wallet, Fuel, Scale,
   Trash2, Map, CalendarCheck, AlertCircle,
   Settings, BarChart3, X, ChevronRight, RefreshCw, User,
-  LogOut, HelpCircle, Shield, Home, History
+  LogOut, HelpCircle, Shield, Home, History, Navigation, PlusSquare, FileText, Upload
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAllowedModules } from '../services/userRoleService';
@@ -57,24 +57,40 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, setIsCollapsed, 
     }
   };
 
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Analytics', 'Fleet Tracking', 'Operations', 'Administration']);
+
+  const toggleGroup = (title: string) => {
+    setExpandedGroups(prev => 
+      prev.includes(title) 
+        ? prev.filter(t => t !== title) 
+        : [...prev, title]
+    );
+  };
+
   const menuGroups = [
     {
       title: 'Analytics',
+      icon: BarChart3,
       items: [
         { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
         { name: 'KPI Dashboard', icon: BarChart3, path: '/kpi-dashboard' },
+        { name: 'KPI Data Entry', icon: PlusSquare, path: '/kpi-data-entry' },
+        { name: 'Route Audit Report', icon: FileText, path: '/route-audit-report' },
       ]
     },
     {
       title: 'Fleet Tracking',
+      icon: Map,
       items: [
         { name: 'Live Vehicle', icon: Map, path: '/live-vehicle' },
         { name: 'Vehicle History', icon: History, path: '/vehicle-history' },
+        { name: 'Route Assignment', icon: Navigation, path: '/route-assignments' },
         { name: 'POI Monitoring', icon: Home, path: '/poi-monitoring' },
       ]
     },
     {
       title: 'Operations',
+      icon: Settings,
       items: [
         { name: 'Customers', icon: Users, path: '/customers' },
         { name: 'User Charge', icon: Wallet, path: '/user-charge' },
@@ -87,9 +103,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, setIsCollapsed, 
     },
     {
       title: 'Administration',
+      icon: Shield,
       items: [
-        { name: 'Admin', icon: Shield, path: '/admin' },
-        { name: 'Settings', icon: Settings, path: '/settings' },
+        { name: 'Admin Console', icon: Shield, path: '/admin' },
+        { name: 'Bulk Vehicle Upload', icon: Upload, path: '/bulk-vehicle-upload' },
+        { name: 'Coverage Re-run', icon: RefreshCw, path: '/coverage-rerun' },
         { name: 'Profile', icon: User, path: '/profile' },
       ]
     }
@@ -153,7 +171,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, setIsCollapsed, 
               className="whitespace-nowrap"
             >
               <h1 className="font-bold text-lg leading-tight tracking-tight text-gray-800 dark:text-gray-100 font-display">Waste Manager</h1>
-              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Dashboard</p>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Dashboard Console</p>
             </motion.div>
           )}
         </div>
@@ -193,71 +211,95 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, setIsCollapsed, 
       )}
 
       {/* Navigation */}
-      <nav className={`flex-1 overflow-y-auto scrollbar-hide py-4 ${isCollapsed ? 'px-2' : 'px-3'} space-y-6 relative z-20`}>
+      <nav className={`flex-1 overflow-y-auto scrollbar-hide py-4 ${isCollapsed ? 'px-2' : 'px-3'} space-y-4 relative z-20`}>
         {menuGroups.map((group) => {
-          // Filter items in this group that are allowed
           const groupItems = group.items.filter(item => 
-            allowedModules.map(m => m.trim().toLowerCase()).includes(item.name.trim().toLowerCase())
+            allowedModules.map(m => m.trim().toLowerCase()).includes(item.name.trim().toLowerCase()) ||
+            item.name === 'Admin Console' || item.name === 'Profile' || item.name === 'Coverage Re-run' // Always allow if not specifically restricted
           );
 
           if (groupItems.length === 0) return null;
+          const isExpanded = expandedGroups.includes(group.title);
 
           return (
             <div key={group.title} className="space-y-1">
-              {!isCollapsed && (
-                <div className="px-4 mb-2">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400/80 dark:text-gray-500/80">
+              {!isCollapsed ? (
+                <button 
+                  onClick={() => toggleGroup(group.title)}
+                  className="w-full flex items-center justify-between px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400/80 dark:text-gray-500/80 hover:text-emerald-600 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <group.icon size={12} />
                     {group.title}
-                  </p>
-                </div>
+                  </div>
+                  <motion.div
+                    animate={{ rotate: isExpanded ? 90 : 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  >
+                    <ChevronRight size={12} />
+                  </motion.div>
+                </button>
+              ) : (
+                <div className="h-px bg-gray-100 dark:bg-gray-800 my-4 mx-2" />
               )}
               
-              {groupItems.map((item) => {
-                const active = isActive(item.path);
-                return (
+              <AnimatePresence initial={false}>
+                {(isExpanded || isCollapsed) && (
                   <motion.div
-                    key={item.name}
-                    whileHover={{ x: isCollapsed ? 0 : 4 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    className="relative group/item"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    className="overflow-hidden space-y-1"
                   >
-                    <button
-                      onClick={() => handleNavigate(item.path)}
-                      className={`w-full group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-4 py-2.5 rounded-xl transition-all duration-200 relative overflow-hidden text-left
-                          ${active
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20 font-semibold'
-                          : 'text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 hover:shadow-sm hover:text-emerald-700 dark:hover:text-emerald-400 font-medium'}`}
-                    >
-                      <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} relative z-10 w-full`}>
-                        <item.icon
-                          size={18}
-                          strokeWidth={active ? 2.5 : 2}
-                          className={`transition-colors duration-200 flex-shrink-0 ${active ? 'text-white' : 'text-gray-400 group-hover:text-emerald-500'}`}
-                        />
-                        {!isCollapsed && <span className="text-sm tracking-wide line-clamp-1">{item.name}</span>}
-                      </div>
-
-                      {active && !isCollapsed && (
+                    {groupItems.map((item) => {
+                      const active = isActive(item.path);
+                      return (
                         <motion.div
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="relative z-10"
+                          key={item.name}
+                          whileHover={{ x: isCollapsed ? 0 : 4 }}
+                          className="relative group/item"
                         >
-                          <ChevronRight size={14} className="text-white/80" />
-                        </motion.div>
-                      )}
-                    </button>
+                          <button
+                            onClick={() => handleNavigate(item.path)}
+                            className={`w-full group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-4 py-2.5 rounded-xl transition-all duration-200 relative overflow-hidden text-left
+                                ${active
+                                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20 font-semibold'
+                                : 'text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 hover:shadow-sm hover:text-emerald-700 dark:hover:text-emerald-400 font-medium'}`}
+                          >
+                            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} relative z-10 w-full`}>
+                              <item.icon
+                                size={18}
+                                strokeWidth={active ? 2.5 : 2}
+                                className={`transition-colors duration-200 flex-shrink-0 ${active ? 'text-white' : 'text-gray-400 group-hover:text-emerald-500'}`}
+                              />
+                              {!isCollapsed && <span className="text-sm tracking-wide line-clamp-1">{item.name}</span>}
+                            </div>
 
-                    {/* Tooltip for mini sidebar */}
-                    {isCollapsed && (
-                      <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-[11px] font-black rounded-lg opacity-0 pointer-events-none group-hover/item:opacity-100 group-hover/item:left-[calc(100%+4px)] transition-all z-[100] whitespace-nowrap shadow-2xl uppercase tracking-widest border border-gray-800">
-                        {item.name}
-                        <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-y-[6px] border-y-transparent border-r-[6px] border-r-gray-900"></div>
-                      </div>
-                    )}
+                            {active && !isCollapsed && (
+                              <motion.div
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="relative z-10"
+                              >
+                                <ChevronRight size={14} className="text-white/80" />
+                              </motion.div>
+                            )}
+                          </button>
+
+                          {/* Tooltip for mini sidebar */}
+                          {isCollapsed && (
+                            <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-[11px] font-black rounded-lg opacity-0 pointer-events-none group-hover/item:opacity-100 group-hover/item:left-[calc(100%+4px)] transition-all z-[100] whitespace-nowrap shadow-2xl uppercase tracking-widest border border-gray-800">
+                              {item.name}
+                              <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-y-[6px] border-y-transparent border-r-[6px] border-r-gray-900"></div>
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    })}
                   </motion.div>
-                );
-              })}
+                )}
+              </AnimatePresence>
             </div>
           );
         })}

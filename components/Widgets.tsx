@@ -27,7 +27,7 @@ interface ColoredStatCardProps {
   onClick?: () => void;
 }
 
-export const ColoredStatCard: React.FC<ColoredStatCardProps> = ({ title, value, icon: Icon, image, color, delay = 0, onClick }) => {
+export const ColoredStatCard: React.FC<ColoredStatCardProps> = React.memo(({ title, value, icon: Icon, image, color, delay = 0, onClick }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -72,8 +72,8 @@ export const ColoredStatCard: React.FC<ColoredStatCardProps> = ({ title, value, 
       {/* Shine Effect */}
       <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
     </motion.div>
-  )
-}
+  );
+});
 
 // --- Helper for Empty State ---
 const EmptyState = ({ illustration: Illustration, message }: { illustration: React.ElementType, message: string }) => (
@@ -97,7 +97,7 @@ const WidgetContainer: React.FC<{ children: React.ReactNode; className?: string 
 );
 
 // --- User Charge Collection Widget ---
-export const UserChargeWidget: React.FC<{ data?: { label: string; value: string; color: string }[] }> = ({ data = [] }) => {
+export const UserChargeWidget: React.FC<{ data?: { label: string; value: string; color: string }[] }> = React.memo(({ data = [] }) => {
   return (
     <WidgetContainer>
       <div className="flex items-center justify-between mb-4 relative z-10">
@@ -134,10 +134,10 @@ export const UserChargeWidget: React.FC<{ data?: { label: string; value: string;
       )}
     </WidgetContainer>
   );
-};
+});
 
 // --- Vehicle Status Widget ---
-export const VehicleStatusWidget: React.FC<{ data?: { label: string; value: number; color: string }[] }> = ({ data = [] }) => {
+export const VehicleStatusWidget: React.FC<{ data?: { label: string; value: number; color: string }[] }> = React.memo(({ data = [] }) => {
   return (
     <WidgetContainer>
       <div className="flex items-center justify-between mb-4 relative z-10">
@@ -178,10 +178,10 @@ export const VehicleStatusWidget: React.FC<{ data?: { label: string; value: numb
       )}
     </WidgetContainer>
   );
-};
+});
 
 // --- Complaint Donut Chart ---
-export const ComplaintChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
+export const ComplaintChart: React.FC<{ data?: any[] }> = React.memo(({ data = [] }) => {
   return (
     <WidgetContainer>
       <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-2 flex items-center gap-2 relative z-10 font-display">
@@ -250,91 +250,86 @@ export const ComplaintChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
       )}
     </WidgetContainer>
   );
-};
+});
 
 // --- Bulk Collection Chart ---
-export const BulkCollectionChart: React.FC<{ data?: { segments: any[], binStatus: any[] } }> = ({ data }) => {
+export const BulkCollectionChart: React.FC<{ data?: { segments: any[] } }> = React.memo(({ data }) => {
   const segments = data?.segments || [];
-  const binStatus = data?.binStatus || [];
+  const total = segments.reduce((a: number, b: any) => a + (isNaN(b.value) ? 0 : b.value), 0);
 
   return (
     <WidgetContainer>
-      <div className="flex items-center justify-between mb-4 relative z-10">
-        <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2 font-display">
-          <span className="w-1.5 h-5 bg-blue-500 rounded-full shadow-sm"></span>
-          Bulk & Smart Bins
-        </h3>
-        <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-lg border border-blue-100/50 dark:border-blue-800/50 shadow-sm">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
-          </span>
-          <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest leading-none">IoT Live</span>
-        </div>
-      </div>
+      <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-2 relative z-10 font-display">
+        <span className="w-1.5 h-5 bg-emerald-500 rounded-full shadow-sm"></span>
+        Bulk Collection
+      </h3>
 
-      <div className="flex flex-col gap-3 relative z-10">
-        {/* Top: Minimal Pie Chart */}
-        <div className="h-[105px] relative" style={{ minHeight: '105px' }}>
-          <div className="absolute inset-0 opacity-5 pointer-events-none flex items-center justify-center">
-            <BinIllustration className="w-24 h-24" />
+      {total > 0 ? (
+        <div className="flex-1 flex items-center relative z-10 min-h-0">
+          <div className="absolute -top-6 -right-6 opacity-5 pointer-events-none">
+            <BinIllustration className="w-40 h-40" />
           </div>
-          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={105}>
-            <PieChart>
-              <Pie
-                data={segments}
-                cx="50%"
-                cy="50%"
-                innerRadius={35}
-                outerRadius={48}
-                paddingAngle={4}
-                dataKey="value"
-                stroke="none"
-              >
-                {segments.map((entry: any, index: number) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '10px' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-xl font-black text-gray-800 dark:text-white leading-none">
-              {segments.reduce((a: any, b: any) => a + (isNaN(b.value) ? 0 : b.value), 0)}
-            </span>
-            <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Units</span>
-          </div>
-        </div>
 
-        {/* Bottom: Smart Bin Status */}
-        <div className="space-y-2.5 px-1">
-          {binStatus.map((bin, idx) => (
-            <div key={idx} className="space-y-1">
-              <div className="flex justify-between items-center text-[10px] font-bold">
-                <span className="text-gray-500 dark:text-gray-400 tracking-tight">{bin.location}</span>
-                <span className={`${bin.fill > 80 ? 'text-rose-500' : 'text-gray-700 dark:text-gray-200'}`}>{bin.fill}%</span>
-              </div>
-              <div className="h-2 w-full bg-gray-100 dark:bg-gray-700/50 rounded-full overflow-hidden shadow-inner">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${bin.fill}%` }}
-                  transition={{ duration: 1, delay: 0.5 + (idx * 0.1) }}
-                  className={`h-full ${bin.color} rounded-full shadow-sm`}
-                />
+          <div className="flex items-center w-full gap-4">
+            {/* Donut Chart */}
+            <div className="relative w-[130px] h-[130px] flex-shrink-0" style={{ minHeight: '130px' }}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={130}>
+                <PieChart>
+                  <Pie
+                    data={segments}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={42}
+                    outerRadius={60}
+                    paddingAngle={3}
+                    dataKey="value"
+                    stroke="none"
+                    cornerRadius={6}
+                  >
+                    {segments.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+
+              {/* Center Total */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-2xl font-black text-gray-800 dark:text-white leading-none font-display">
+                  {total}
+                </span>
+                <span className="text-[8px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1">Total</span>
               </div>
             </div>
-          ))}
+
+            {/* Legend */}
+            <div className="flex-1 flex flex-col gap-2.5 pr-2">
+              {segments.map((item: any, i: number) => (
+                <div key={i} className="flex items-center justify-between group">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: item.color }} />
+                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400 group-hover:text-gray-900 transition-colors">
+                      {item.name}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-black text-gray-700 dark:text-gray-200">
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <EmptyState illustration={BinIllustration} message="No bulk collection data" />
+      )}
     </WidgetContainer>
   );
-};
+});
 
 // --- POI Widget ---
-export const POIWidget: React.FC<{ total?: number, visited?: number }> = ({ total = 0, visited = 0 }) => {
-  const percentage = total > 0 ? Math.round((visited / total) * 100) : 0;
+export const POIWidget: React.FC<{ total?: number, assigned?: number, visited?: number }> = React.memo(({ total = 0, assigned = 0, visited = 0 }) => {
+  const percentage = assigned > 0 ? Math.round((visited / assigned) * 100) : 0;
 
   return (
     <WidgetContainer>
@@ -351,52 +346,58 @@ export const POIWidget: React.FC<{ total?: number, visited?: number }> = ({ tota
         </motion.div>
       </div>
 
-      {total > 0 ? (
-        <div className="space-y-6 relative z-10">
-          <div className="absolute top-10 -right-6 opacity-10 pointer-events-none">
-            <MapIllustration className="w-40 h-40" />
-          </div>
-          <div className="flex justify-between items-end border-b border-dashed border-gray-200 dark:border-gray-700 pb-3">
-            <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Total POIs</span>
-            <span className="text-xl font-bold text-gray-800 dark:text-white font-display">{total.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between items-end">
-            <div className="flex flex-col">
-              <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Visited Today</span>
-              <div className="flex items-center gap-1 mt-1">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                <span className="text-xs text-green-600 font-bold">Live</span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-xl font-bold text-gray-800 dark:text-white block font-display">{visited.toLocaleString()}</span>
-              <span className="text-xs font-medium text-gray-400">Target: {total.toLocaleString()} ({percentage}%)</span>
-            </div>
-          </div>
+      <div className="space-y-4 relative z-10">
+        <div className="absolute top-10 -right-6 opacity-10 pointer-events-none">
+          <MapIllustration className="w-40 h-40" />
+        </div>
+        
+        {/* Line 1: Total Customer */}
+        <div className="flex justify-between items-center py-1">
+          <span className="text-gray-500 dark:text-gray-400 text-[11px] font-bold uppercase tracking-wider">Total Customer</span>
+          <span className="text-lg font-black text-gray-800 dark:text-white font-display">{total.toLocaleString()}</span>
+        </div>
 
-          {/* Progress Bar */}
-          <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden shadow-inner">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${percentage}%` }}
-              transition={{ duration: 1.5, ease: "easeOut" }}
-              className="bg-gradient-to-r from-teal-400 to-teal-600 h-full rounded-full shadow-sm"
-            ></motion.div>
+        {/* Line 2: Assigned on Route */}
+        <div className="flex justify-between items-center py-1 border-t border-dashed border-gray-100 dark:border-gray-800">
+          <span className="text-gray-500 dark:text-gray-400 text-[11px] font-bold uppercase tracking-wider">Assigned on Route</span>
+          <span className="text-lg font-black text-teal-600 dark:text-teal-400 font-display">{assigned.toLocaleString()}</span>
+        </div>
+
+        {/* Line 3: Covered POI */}
+        <div className="flex justify-between items-center py-1 border-t border-dashed border-gray-100 dark:border-gray-800">
+          <div className="flex flex-col">
+            <span className="text-gray-500 dark:text-gray-400 text-[11px] font-bold uppercase tracking-wider">Covered POI</span>
+            <div className="flex items-center gap-1 mt-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+              <span className="text-[9px] text-green-600 font-black uppercase tracking-widest">Live</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-lg font-black text-gray-800 dark:text-white block font-display">{visited.toLocaleString()}</span>
+            <span className="text-[10px] font-bold text-gray-400">Completion: {percentage}%</span>
           </div>
         </div>
-      ) : (
-        <EmptyState illustration={MapIllustration} message="No POI data loaded" />
-      )}
+
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-100 dark:bg-gray-700/50 rounded-full h-2 overflow-hidden mt-2">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${percentage}%` }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            className="bg-gradient-to-r from-teal-400 to-teal-600 h-full rounded-full shadow-sm"
+          ></motion.div>
+        </div>
+      </div>
 
       <div className="mt-auto pt-4 text-[10px] text-gray-400 font-bold hover:text-teal-600 flex items-center gap-1 cursor-pointer group relative z-10 transition-colors uppercase tracking-widest">
         View Detailed Report <ArrowRight size={10} className="group-hover:translate-x-1 transition-transform" />
       </div>
     </WidgetContainer>
   );
-};
+});
 
 // --- Customer Chart ---
-export const CustomerChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
+export const CustomerChart: React.FC<{ data?: any[] }> = React.memo(({ data = [] }) => {
   return (
     <WidgetContainer>
       <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-2 flex items-center gap-2 relative z-10 font-display">
@@ -436,7 +437,7 @@ export const CustomerChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
               {/* Centered % */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-xl font-black text-gray-800 dark:text-white leading-none font-display">
-                  {data.reduce((acc, curr) => acc + (isNaN(curr.value) ? 0 : curr.value), 0)}%
+                  {data.reduce((acc, curr) => acc + (isNaN(curr.value) ? 0 : curr.value), 0)}
                 </span>
                 <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Users</span>
               </div>
@@ -453,7 +454,7 @@ export const CustomerChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
                     </span>
                   </div>
                   <span className="text-[10px] font-black text-gray-700 dark:text-gray-200">
-                    {item.value}%
+                    {item.value}
                   </span>
                 </div>
               ))}
@@ -465,7 +466,7 @@ export const CustomerChart: React.FC<{ data?: any[] }> = ({ data = [] }) => {
       )}
     </WidgetContainer>
   );
-};
+});
 
 // --- Weather Widget ---
 export const WeatherWidget: React.FC = () => {
@@ -538,7 +539,7 @@ export const QuickActionCard: React.FC<{ title: string, icon: React.ElementType,
 };
 
 // --- Top Performing Wards Widget ---
-export const TopWardsWidget: React.FC<{ data?: { name: string, score: number, trend: string }[] }> = ({ data = [] }) => {
+export const TopWardsWidget: React.FC<{ data?: { name: string, score: number, trend: string }[] }> = React.memo(({ data = [] }) => {
   const wards = data.length > 0 ? data : [
     { name: 'N/A', score: 0, trend: 'neutral' },
   ];
@@ -575,4 +576,4 @@ export const TopWardsWidget: React.FC<{ data?: { name: string, score: number, tr
       </button>
     </WidgetContainer>
   );
-};
+});

@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Upload, FileText, Trash2, CheckCircle2, AlertCircle, 
     Layers, Plus, Filter, Search, Map as MapIcon, 
-    Navigation, Save, X, ChevronRight, Globe, RefreshCw
+    Navigation, Save, X, ChevronRight, Globe, RefreshCw, List, Database
 } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
-import { getAllAdminData, createLargeDocument, deleteAdminData } from '../../services/databaseService';
+import { db } from '../../services/firebaseConfig';
+import { collection, writeBatch, doc, setDoc } from 'firebase/firestore';
+import { getAllAdminData, createLargeDocument, deleteAdminData, updateAdminData } from '../../services/databaseService';
 import { useData } from '../../services/DataContext';
 import toGeoJSON from '@mapbox/togeojson';
 import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
@@ -86,6 +89,7 @@ const MapBoundsSetter = ({ data, allRoutes }: { data: any, allRoutes?: RouteLaye
 
 interface RouteLayer {
     id: string;
+    routeId?: string;
     name: string;
     zone: string;
     ward: string;
@@ -106,8 +110,17 @@ const RouteMasterPage = () => {
     const [selectedZone, setSelectedZone] = useState('');
     const [selectedWard, setSelectedWard] = useState('');
     const [routeName, setRouteName] = useState('');
+    const [routeId, setRouteId] = useState('');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+    const [bulkFile, setBulkFile] = useState<File | null>(null);
+    const [status, setStatus] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null);
+    const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
+    const [activeTab, setActiveTab] = useState<'view' | 'upload'>('view');
+    const [isRepairing, setIsRepairing] = useState(false);
+
+    // Refs for hidden inputs
+    const routeFileInputRef = useRef<HTMLInputElement>(null);
+    const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
     // Map Modal State
     const [selectedRoute, setSelectedRoute] = useState<RouteLayer | null>(null);
@@ -130,6 +143,110 @@ const RouteMasterPage = () => {
         }
     };
 
+    const handleRepairZones = async () => {
+        if (wards.length === 0) {
+            if (window.confirm("Ward Master data is missing. Would you like to initialize the default 70 wards and 4 zones first?")) {
+                handleInitializeMasterData();
+            }
+            return;
+        }
+
+        setIsRepairing(true);
+        try {
+            const batch = writeBatch(db);
+            let count = 0;
+
+            for (const route of routes) {
+                if (!route.zone || route.zone === 'Unknown' || route.zone === '') {
+                    const trimmedWard = String(route.ward).trim();
+                    console.log('Attempting to repair ward:', trimmedWard);
+                    
+                    const foundWard = wards.find(w => 
+                        w.name.toLowerCase().trim() === trimmedWard.toLowerCase() ||
+                        (trimmedWard.length <= 3 && w.name.startsWith(trimmedWard.padStart(2, '0') + '-')) ||
+                        w.name.toLowerCase().includes(trimmedWard.toLowerCase())
+                    );
+
+                    if (foundWard) {
+                        console.log('Match found:', foundWard.name, 'Zone:', foundWard.zoneName);
+                        const zoneName = foundWard.zoneName || foundWard.zone;
+                        const routeRef = doc(db, 'ward_routes', route.id);
+                        batch.update(routeRef, { zone: zoneName });
+                        count++;
+                    } else {
+                        console.log('No match found for ward:', trimmedWard);
+                    }
+                }
+            }
+
+            if (count > 0) {
+                await batch.commit();
+                alert(`Successfully repaired ${count} routes!`);
+                fetchData();
+            } else {
+                alert("No repairable routes found. Please ensure Ward Master data matches your route ward names.");
+            }
+        } catch (error) {
+            console.error("Repair error:", error);
+            alert("Failed to repair zones.");
+        } finally {
+            setIsRepairing(false);
+        }
+    };
+
+    const handleInitializeMasterData = async () => {
+        setIsRepairing(true);
+        try {
+            const ZONES = ["1-CITY", "2-BHUTESHWAR", "3-AURANGABAD", "4-VRINDAVAN"];
+            const WARDS_DATA = [
+                "01-Birjapur", "02-Ambedkar Nagar", "03-Girdharpur", "04-Ishapur Yamunapar", "05-Bharatpur Gate",
+                "06-Aduki", "07-Lohvan", "08-Atas", "09-Gandhi Nagar", "10-Aurangabad First",
+                "11-Tarsi", "12-Radhe Shyam Colony", "13-Sunrakh", "14-Lakshmi Nagar Yamunapar", "15-Maholi First",
+                "16-Bakalpur", "17-Bairaagpura", "18-General ganj", "19-Ramnagar Yamunapar", "20-Krishna Nagar First",
+                "21-Chaitanya Bihar", "22-Badhri Nagar", "23-Aheer Pada", "24-Sarai Azamabad", "25-Chharaura",
+                "26-Naya Nagla", "27-Baad", "28-Aurangabad Second", "29-Koyla Alipur", "30-Krishna Nagar Second",
+                "31-Navneet Nagar", "32-Ranchibagar", "33-Palikhera", "34-Radhaniwas", "35-Bankhandi",
+                "36-Jaisingh Pura", "37-Baldevpuri", "38-Civil Lines", "39-Mahavidhya Colony", "40-Rajkumar",
+                "41-Dhaulipiau", "42-Manoharpur", "43-Ganeshra", "44-Radhika Bihar", "45-Birla Mandir",
+                "46-Radha Nagar", "47-Dwarkapuri", "48-Satoha Asangpur", "49-Daimpiriyal Nagar", "50-Patharpura",
+                "51-Gaushala Nagar", "52-Chandrapuri", "53-Krishna Puri", "54-Pratap Nagar", "55-Govind Nagar",
+                "56-Mandi Randas", "57-Balajipuram", "58-Gau Ghat", "59-Maholi Second", "60-Jagannath Puri",
+                "61-Chaubia Para", "62-Mathura Darwaza", "63-Maliyaan Sadar", "64-Ghati Bahalray", "65-Holi Gali",
+                "66-Keshighat", "67-Kemar Van", "68-Shanti Nagar", "69-Ratan Chhatri", "70-Biharipur"
+            ];
+
+            // Create Zones
+            for (const zName of ZONES) {
+                const zoneRef = doc(db, 'zones', zName);
+                await setDoc(zoneRef, { name: zName, description: 'Default System Zone', updatedAt: new Date().toISOString() }, { merge: true });
+            }
+
+            // Create Wards
+            const batch = writeBatch(db);
+            for (let i = 0; i < WARDS_DATA.length; i++) {
+                const wName = WARDS_DATA[i];
+                let zName = ZONES[0];
+                if (i >= 20 && i < 40) zName = ZONES[1];
+                if (i >= 40 && i < 60) zName = ZONES[2];
+                if (i >= 60) zName = ZONES[3];
+                
+                const wardRef = doc(db, 'wards', wName);
+                batch.set(wardRef, { 
+                    name: wName, 
+                    zoneName: zName, 
+                    updatedAt: new Date().toISOString() 
+                }, { merge: true });
+            }
+            await batch.commit();
+            alert("Master Data Initialized! Now clicking Repair Zones will work.");
+            refreshGlobalData();
+        } catch (e: any) {
+            alert("Initialization failed: " + e.message);
+        } finally {
+            setIsRepairing(false);
+        }
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
@@ -139,6 +256,9 @@ const RouteMasterPage = () => {
                 if (!routeName) {
                     setRouteName(file.name.split('.')[0].replace(/_/g, ' '));
                 }
+                if (!routeId) {
+                    setRouteId(file.name.split('.')[0].toUpperCase());
+                }
             } else {
                 setStatus({ type: 'error', message: 'Please upload a .kml or .geojson file' });
             }
@@ -146,7 +266,7 @@ const RouteMasterPage = () => {
     };
 
     const handleUpload = async () => {
-        if (!selectedFile || !selectedZone || !selectedWard || !routeName) {
+        if (!selectedFile || !selectedZone || !selectedWard || !routeName || !routeId) {
             setStatus({ type: 'error', message: 'Please fill all fields and select a file' });
             return;
         }
@@ -183,6 +303,7 @@ const RouteMasterPage = () => {
                 // Metadata for the route
                 const routeData = {
                     name: routeName,
+                    routeId: routeId,
                     zone: selectedZone,
                     ward: selectedWard,
                     featureCount: geojsonData.features?.length || (geojsonData.type === 'Feature' ? 1 : 0),
@@ -196,6 +317,7 @@ const RouteMasterPage = () => {
                 if (result.success) {
                     setStatus({ type: 'success', message: 'Route uploaded successfully!' });
                     setRouteName('');
+                    setRouteId('');
                     setSelectedFile(null);
                     fetchData();
                 } else {
@@ -204,6 +326,107 @@ const RouteMasterPage = () => {
                 setUploading(false);
             };
             reader.readAsText(selectedFile);
+        } catch (error: any) {
+            setStatus({ type: 'error', message: error.message });
+            setUploading(false);
+        }
+    };
+
+    const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            if (file.name.endsWith('.csv')) {
+                setBulkFile(file);
+                setStatus({ type: 'info', message: `Selected bulk file: ${file.name}. Click 'Start Bulk Import' to proceed.` });
+            } else {
+                setStatus({ type: 'error', message: 'Please upload a .csv file for bulk import' });
+            }
+        }
+    };
+
+    const handleBulkUpload = async () => {
+        if (!bulkFile) return;
+        setUploading(true);
+        setStatus({ type: 'info', message: 'Processing bulk file...' });
+
+        try {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const data = new Uint8Array(e.target?.result as ArrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet) as any[];
+
+                setBulkProgress({ current: 0, total: jsonData.length });
+                let successCount = 0;
+                let failCount = 0;
+
+                for (let i = 0; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    try {
+                        const wardArea = row['Ward Area'] || '';
+                        const routeId = row['Route ID'] || '';
+                        const routeName = row['Route Name'] || row['Route ID'] || `Route ${i + 1}`;
+                        const kmlContent = row['KML Content'] || '';
+
+                        if (!kmlContent) {
+                            failCount++;
+                            continue;
+                        }
+
+                        // Map ward to zone (Robust Lookup)
+                        const trimmedWard = String(wardArea).trim();
+                        const foundWard = wards.find(w => 
+                            w.name.toLowerCase().trim() === trimmedWard.toLowerCase() ||
+                            (trimmedWard.length <= 3 && w.name.startsWith(trimmedWard.padStart(2, '0') + '-')) ||
+                            w.name.toLowerCase().includes(trimmedWard.toLowerCase())
+                        );
+                        const zoneName = foundWard ? (foundWard.zoneName || foundWard.zone) : 'Unknown';
+
+                        // Parse KML to GeoJSON
+                        const parser = new DOMParser();
+                        const kmlDoc = parser.parseFromString(kmlContent, 'text/xml');
+                        const geojsonData = toGeoJSON.kml(kmlDoc);
+
+                        // Calculate stats
+                        let totalPoints = 0;
+                        if (geojsonData.features) {
+                            geojsonData.features.forEach((f: any) => {
+                                totalPoints += countCoordinates(f.geometry);
+                            });
+                        }
+
+                        const routeData = {
+                            name: routeName,
+                            routeId: routeId,
+                            zone: zoneName,
+                            ward: wardArea,
+                            featureCount: geojsonData.features?.length || 0,
+                            pointCount: totalPoints,
+                            data: JSON.stringify(geojsonData),
+                            createdAt: new Date().toISOString()
+                        };
+
+                        const result = await createLargeDocument('ward_routes', routeData, 'data');
+                        if (result.success) successCount++;
+                        else failCount++;
+
+                    } catch (err) {
+                        console.error(`Error processing row ${i}:`, err);
+                        failCount++;
+                    }
+                    setBulkProgress({ current: i + 1, total: jsonData.length });
+                }
+
+                setStatus({ 
+                    type: successCount > 0 ? 'success' : 'error', 
+                    message: `Bulk import complete! Successfully imported ${successCount} routes. ${failCount} failed.` 
+                });
+                setUploading(false);
+                setBulkFile(null);
+                fetchData();
+            };
+            reader.readAsArrayBuffer(bulkFile);
         } catch (error: any) {
             setStatus({ type: 'error', message: error.message });
             setUploading(false);
@@ -275,10 +498,37 @@ const RouteMasterPage = () => {
 
     return (
         <div className="p-6 space-y-8 max-w-7xl mx-auto">
-            <PageHeader 
-                title="Route Master" 
-                description="Upload and manage vehicle routes for each ward using KML or GeoJSON files"
-            />
+            <div className="flex justify-between items-start">
+                <PageHeader 
+                    title="Route Master Management" 
+                    description="Upload and manage ward-specific vehicle routes." 
+                />
+                <div className="flex gap-3">
+                    <button
+                        onClick={handleInitializeMasterData}
+                        disabled={isRepairing}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all text-sm disabled:opacity-50"
+                    >
+                        <Database size={18} className={isRepairing ? "animate-spin" : ""} />
+                        Auto-Initialize Master Data
+                    </button>
+                    <button
+                        onClick={handleRepairZones}
+                        disabled={isRepairing}
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-bold shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-all text-sm disabled:opacity-50"
+                    >
+                        <RefreshCw size={18} className={isRepairing ? "animate-spin" : ""} />
+                        {isRepairing ? "Repairing..." : "Fix Unknown Zones"}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab(activeTab === 'view' ? 'upload' : 'view')}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all text-sm"
+                    >
+                        {activeTab === 'view' ? <Plus size={18} /> : <List size={18} />}
+                        {activeTab === 'view' ? 'Bulk Upload' : 'View Routes'}
+                    </button>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Upload Section */}
@@ -317,6 +567,17 @@ const RouteMasterPage = () => {
                                     <option value="">Select Ward</option>
                                     {filteredWards.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
                                 </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Route ID</label>
+                                <input 
+                                    type="text"
+                                    value={routeId}
+                                    onChange={(e) => setRouteId(e.target.value)}
+                                    placeholder="e.g. W1R1"
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-sm font-bold focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all"
+                                />
                             </div>
 
                             <div>
@@ -370,6 +631,70 @@ const RouteMasterPage = () => {
                                     </motion.div>
                                 )}
                             </AnimatePresence>
+                        </div>
+                    </motion.div>
+
+                    {/* Bulk Import Section */}
+                    <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-700"
+                    >
+                        <h3 className="text-xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                            <Layers className="text-blue-500" size={24} />
+                            Bulk Import Routes
+                        </h3>
+
+                        <div className="space-y-5">
+                            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800">
+                                <p className="text-[11px] text-blue-700 dark:text-blue-300 font-bold leading-relaxed">
+                                    Upload a CSV with headers: <br/>
+                                    <code className="bg-white/50 px-1 rounded">Ward Area, Route ID, Route Name, KML Content</code>
+                                </p>
+                            </div>
+
+                            <div className="relative group">
+                                <input 
+                                    type="file" 
+                                    onChange={handleBulkFileChange}
+                                    accept=".csv"
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                />
+                                <div className={`p-6 border-2 border-dashed rounded-3xl text-center transition-all ${bulkFile ? 'border-blue-500 bg-blue-50/30' : 'border-gray-200 dark:border-gray-700 group-hover:border-blue-400'}`}>
+                                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mx-auto mb-3 ${bulkFile ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-900 text-gray-400'}`}>
+                                        <FileText size={20} />
+                                    </div>
+                                    <p className="text-xs font-black text-gray-700 dark:text-gray-200">
+                                        {bulkFile ? bulkFile.name : 'Select CSV for Bulk Upload'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {uploading && bulkProgress.total > 0 && (
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                        <span>Importing...</span>
+                                        <span>{bulkProgress.current} / {bulkProgress.total}</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-100 dark:bg-gray-900 rounded-full overflow-hidden">
+                                        <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }}
+                                            className="h-full bg-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <button 
+                                onClick={handleBulkUpload}
+                                disabled={uploading || !bulkFile}
+                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+                            >
+                                {uploading ? <RefreshCw className="animate-spin" size={20} /> : <Navigation size={20} />}
+                                {uploading ? 'Processing...' : 'Start Bulk Import'}
+                            </button>
                         </div>
                     </motion.div>
                 </div>
@@ -446,7 +771,7 @@ const RouteMasterPage = () => {
                                 <MapBoundsSetter data={selectedRouteData} allRoutes={routes} />
                             </MapContainer>
 
-                            {(fetchingRoute || (routes.length > 0 && !routes.some(r => r.data))) && (
+                            {(fetchingRoute || (routes.length > 0 && !routes.some(r => r.data) && !selectedRouteData)) && (
                                 <div className="absolute inset-0 bg-white/40 dark:bg-gray-900/40 backdrop-blur-[2px] z-10 flex items-center justify-center pointer-events-none">
                                     <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 flex flex-col items-center gap-3">
                                         <RefreshCw size={24} className="animate-spin text-emerald-500" />
@@ -491,6 +816,15 @@ const RouteMasterPage = () => {
                                         className="pl-10 pr-4 py-2 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-emerald-500/10 w-64"
                                     />
                                 </div>
+                                <button
+                                    onClick={handleRepairZones}
+                                    disabled={isRepairing}
+                                    title="Fix Unknown Zones"
+                                    className="p-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20 disabled:opacity-50 flex items-center gap-2 px-3 text-[10px] font-black uppercase"
+                                >
+                                    <RefreshCw size={14} className={isRepairing ? "animate-spin" : ""} />
+                                    {isRepairing ? "Fixing..." : "Repair Zones"}
+                                </button>
                                 <button onClick={fetchData} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-gray-400">
                                     <RefreshCw size={20} />
                                 </button>
@@ -523,7 +857,10 @@ const RouteMasterPage = () => {
                                                                 <Navigation size={18} />
                                                             </div>
                                                             <div>
-                                                                <h4 className="font-black text-gray-900 dark:text-white uppercase tracking-tight">{route.name}</h4>
+                                                                <h4 className="font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                                                                    {route.name}
+                                                                    {route.routeId && <span className="ml-2 text-emerald-500 font-bold">[{route.routeId}]</span>}
+                                                                </h4>
                                                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                                                                     {route.createdAt ? new Date(route.createdAt).toLocaleDateString() : 'N/A'}
                                                                 </p>
@@ -532,7 +869,18 @@ const RouteMasterPage = () => {
                                                     </td>
                                                     <td className="px-8 py-5">
                                                         <div className="flex flex-col">
-                                                            <span className="text-xs font-black text-gray-700 dark:text-gray-300">{route.zone}</span>
+                                                            <span className={`text-xs font-black uppercase ${(!route.zone || route.zone === 'Unknown') ? 'text-amber-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                                                                {(() => {
+                                                                    if (route.zone && route.zone !== 'Unknown') return route.zone;
+                                                                    const trimmedWard = String(route.ward).trim();
+                                                                    const foundWard = wards.find(w => 
+                                                                        w.name.toLowerCase().trim() === trimmedWard.toLowerCase() ||
+                                                                        (trimmedWard.length <= 3 && w.name.startsWith(trimmedWard.padStart(2, '0') + '-')) ||
+                                                                        w.name.toLowerCase().includes(trimmedWard.toLowerCase())
+                                                                    );
+                                                                    return foundWard ? (foundWard.zoneName || foundWard.zone) : 'Unknown';
+                                                                })()}
+                                                            </span>
                                                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{route.ward}</span>
                                                         </div>
                                                     </td>

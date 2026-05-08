@@ -108,7 +108,7 @@ export const getWardRoutes = async (ward?: string) => {
         return result;
     } catch (error: any) {
         console.error('Error getting ward routes:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, data: [] };
     }
 };
 

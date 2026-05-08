@@ -6,7 +6,7 @@ import SmartRedirect from './components/SmartRedirect';
 import ProtectedRoute from './components/ProtectedRoute';
 import { onAuthStateChange } from './services/authService';
 import { DataProvider } from './services/DataContext';
-import { initializeDefaultRoles, assignDefaultRoleIfNeeded } from './services/userRoleService';
+import { initializeDefaultRoles, assignDefaultRoleIfNeeded, getUserRole, ROLES } from './services/userRoleService';
 import { storeUserLogin } from './services/userManagementService';
 import { ThemeProvider } from './services/ThemeContext';
 import PageLoader from './components/shared/PageLoader';
@@ -28,7 +28,6 @@ const RolesPage = lazy(() => import('./components/pages/RolesPage'));
 const CitizenPage = lazy(() => import('./components/pages/CitizenPage'));
 const UserManagement = lazy(() => import('./components/pages/UserManagement'));
 const ProfilePage = lazy(() => import('./components/pages/ProfilePage'));
-const SettingsPage = lazy(() => import('./components/pages/SettingsPage'));
 const POIMonitoringPage = lazy(() => import('./components/pages/POIMonitoringPage'));
 const LoginPage = lazy(() => import('./components/auth/LoginPage'));
 const HomePage = lazy(() => import('./components/HomePage'));
@@ -43,10 +42,19 @@ const PropertyTypeMasterPage = lazy(() => import('./components/pages/PropertyTyp
 const PropertyWiseCheckingPage = lazy(() => import('./components/pages/PropertyWiseCheckingPage'));
 const DataMigrationPage = lazy(() => import('./components/pages/DataMigrationPage'));
 const BulkCustomerUploadPage = lazy(() => import('./components/pages/BulkCustomerUploadPage'));
+const RouteAssignmentPage = lazy(() => import('./components/pages/RouteAssignmentPage'));
+const KPIThresholdsPage = lazy(() => import('./components/pages/KPIThresholdsPage'));
+const KPIDataEntryPage = lazy(() => import('./components/pages/KPIDataEntryPage'));
+const ParkingDumpMasterPage = lazy(() => import('./components/pages/ParkingDumpMasterPage'));
+const RouteVisualizationPage = lazy(() => import('./components/pages/RouteVisualizationPage'));
+const RouteAuditReportPage = lazy(() => import('./components/pages/RouteAuditReportPage'));
+const CoverageReRunPage = lazy(() => import('./components/pages/CoverageReRunPage'));
+const BulkVehicleUploadPage = lazy(() => import('./components/pages/BulkVehicleUploadPage'));
 
 
 function App() {
   const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const initializedUserRef = React.useRef<string | null>(null);
@@ -64,6 +72,12 @@ function App() {
             await storeUserLogin(user);
             await initializeDefaultRoles();
             await assignDefaultRoleIfNeeded(user.uid);
+            
+            // Fetch role to determine if admin
+            const roleRes = await getUserRole(user.uid);
+            if (roleRes.success) {
+              setIsAdmin(roleRes.data.role === ROLES.ADMIN);
+            }
           } catch (error) {
             console.error('Error initializing user:', error);
           }
@@ -86,7 +100,7 @@ function App() {
   }
 
   return (
-    <DataProvider userId={user?.uid}>
+    <DataProvider userId={user?.uid} isAdmin={isAdmin}>
       <ThemeProvider>
         {user && <GPSSyncService />}
         <Suspense fallback={<PageLoader />}>
@@ -182,11 +196,6 @@ function App() {
                     <ProfilePage />
                   </ProtectedRoute>
                 } />
-                <Route path="/settings" element={
-                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Settings">
-                    <SettingsPage />
-                  </ProtectedRoute>
-                } />
                 <Route path="/vehicle-history" element={
                   <ProtectedRoute userId={user?.uid || ''} requiredModule="Live Vehicle">
                     <VehicleHistoryPage />
@@ -231,6 +240,46 @@ function App() {
                 <Route path="/bulk-customer-upload" element={
                   <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
                     <BulkCustomerUploadPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/route-assignments" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <RouteAssignmentPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/route-network" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <RouteVisualizationPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/route-audit-report" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <RouteAuditReportPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/kpi-thresholds" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <KPIThresholdsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/kpi-data-entry" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <KPIDataEntryPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/parking-dump-master" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <ParkingDumpMasterPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/coverage-rerun" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <CoverageReRunPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/bulk-vehicle-upload" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <BulkVehicleUploadPage />
                   </ProtectedRoute>
                 } />
 

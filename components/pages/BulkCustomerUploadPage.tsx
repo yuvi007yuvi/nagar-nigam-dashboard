@@ -3,11 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Upload, FileText, Download, CheckCircle, AlertCircle, 
     X, Trash2, Database, Users, ArrowRight, Loader2,
-    FileSpreadsheet, HelpCircle, Save
+    FileSpreadsheet, HelpCircle, Save, RefreshCw
 } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
-import { db } from '../../services/firebaseConfig';
-import { collection, writeBatch, doc } from 'firebase/firestore';
+import { db, auth } from '../../services/firebaseConfig';
+import { collection, writeBatch, doc, getDocs, query, where } from 'firebase/firestore';
+import { useData } from '../../services/DataContext';
+
+import * as XLSX from 'xlsx';
 
 interface CustomerData {
     customerId: string;
@@ -18,9 +21,43 @@ interface CustomerData {
     email: string;
     address?: string;
     kycStatus: 'Completed' | 'Pending';
+    lat?: number;
+    lng?: number;
+    zone?: string;
+    serviceStart?: string;
+    kycDate?: string;
+    supervisor?: string;
+    gazetteRate?: number;
+    revisedRate?: number;
+    lastPayment?: string;
+    bill?: string;
+    dues?: number;
+    routeId?: string;
 }
 
+const WARD_LIST = [
+    "01-Birjapur", "02-Ambedkar Nagar", "03-Girdharpur", "04-Ishapur Yamunapar", "05-Bharatpur Gate",
+    "06-Aduki", "07-Lohvan", "08-Atas", "09-Gandhi Nagar", "10-Aurangabad First",
+    "11-Tarsi", "12-Radhe Shyam Colony", "13-Sunrakh", "14-Lakshmi Nagar Yamunapar", "15-Maholi First",
+    "16-Bakalpur", "17-Bairaagpura", "18-General ganj", "19-Ramnagar Yamunapar", "20-Krishna Nagar First",
+    "21-Chaitanya Bihar", "22-Badhri Nagar", "23-Aheer Pada", "24-Sarai Azamabad", "25-Chharaura",
+    "26-Naya Nagla", "27-Baad", "28-Aurangabad Second", "29-Koyla Alipur", "30-Krishna Nagar Second",
+    "31-Navneet Nagar", "32-Ranchibagar", "33-Palikhera", "34-Radhaniwas", "35-Bankhandi",
+    "36-Jaisingh Pura", "37-Baldevpuri", "38-Civil Lines", "39-Mahavidhya Colony", "40-Rajkumar",
+    "41-Dhaulipiau", "42-Manoharpur", "43-Ganeshra", "44-Radhika Bihar", "45-Birla Mandir",
+    "46-Radha Nagar", "47-Dwarkapuri", "48-Satoha Asangpur", "49-Daimpiriyal Nagar", "50-Patharpura",
+    "51-Gaushala Nagar", "52-Chandrapuri", "53-Krishna Puri", "54-Pratap Nagar", "55-Govind Nagar",
+    "56-Mandi Randas", "57-Balajipuram", "58-Gau Ghat", "59-Maholi Second", "60-Jagannath Puri",
+    "61-Chaubia Para", "62-Mathura Darwaza", "63-Maliyaan Sadar", "64-Ghati Bahalray", "65-Holi Gali",
+    "66-Keshighat", "67-Kemar Van", "68-Shanti Nagar", "69-Ratan Chhatri", "70-Biharipur"
+];
+
+const ZONE_LIST = [
+    "1-CITY", "2-BHUTESHWAR", "3-AURANGABAD", "4-VRINDAVAN"
+];
+
 const BulkCustomerUploadPage = () => {
+    const { wards } = useData();
     const [file, setFile] = useState<File | null>(null);
     const [previewRows, setPreviewRows] = useState<CustomerData[]>([]);
     const [totalDetected, setTotalDetected] = useState(0);
@@ -28,14 +65,44 @@ const BulkCustomerUploadPage = () => {
     const [progress, setProgress] = useState(0);
     const [uploadedCount, setUploadedCount] = useState(0);
     const [errorMsg, setErrorMsg] = useState('');
+    const [isRepairing, setIsRepairing] = useState(false);
     
-    // Use Ref for the full data to prevent massive React re-renders with 220k objects
     const fullDataRef = useRef<CustomerData[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
         if (selectedFile) processFile(selectedFile);
+    };
+
+    const normalizeWard = (input: string) => {
+        if (!input) return 'Unknown';
+        const trimmed = input.trim();
+        
+        // 1. Direct match
+        const directMatch = WARD_LIST.find(w => w.toLowerCase() === trimmed.toLowerCase());
+        if (directMatch) return directMatch;
+        
+        // 2. Number match (if input is "1" or "01")
+        const num = parseInt(trimmed);
+        if (!isNaN(num)) {
+            const paddedNum = num.toString().padStart(2, '0');
+            const numMatch = WARD_LIST.find(w => w.startsWith(paddedNum + '-'));
+            if (numMatch) return numMatch;
+        }
+        
+        // 3. Name match (if input is "Birjapur")
+        const nameMatch = WARD_LIST.find(w => w.toLowerCase().includes(trimmed.toLowerCase()));
+        if (nameMatch) return nameMatch;
+        
+        return trimmed;
+    };
+
+    const normalizeZone = (input: string) => {
+        if (!input) return '';
+        const trimmed = input.trim();
+        const match = ZONE_LIST.find(z => z.toLowerCase() === trimmed.toLowerCase());
+        return match || trimmed;
     };
 
     const processFile = (selectedFile: File) => {
@@ -45,47 +112,71 @@ const BulkCustomerUploadPage = () => {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const text = e.target?.result as string;
-                const lines = text.split('\n');
-                if (lines.length < 2) throw new Error('File is empty or invalid.');
+                const data = e.target?.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-                const data: CustomerData[] = [];
+                if (json.length === 0) throw new Error('File is empty or invalid.');
+
+                const mappedData: CustomerData[] = json.map((row, i) => {
+                    const getValue = (keys: string[]) => {
+                        const foundKey = Object.keys(row).find(k => 
+                            keys.some(searchKey => k.toLowerCase().replace(/\s/g, '') === searchKey.toLowerCase().replace(/\s/g, ''))
+                        );
+                        return foundKey ? row[foundKey] : '';
+                    };
+
+                    const rawWard = String(getValue(['ward', 'wardno', 'wardname']) || '');
+                    const normalizedWard = normalizeWard(rawWard);
+                    const rawZone = String(getValue(['zone', 'zonename']) || '');
+                    const normalizedZone = normalizeZone(rawZone);
+                    const lat = parseFloat(getValue(['latitude', 'lat']));
+                    const lng = parseFloat(getValue(['longitude', 'lng', 'long']));
+
+                    // Fallback Zone Lookup from Ward
+                    let finalZone = normalizedZone;
+                    if (!finalZone && normalizedWard) {
+                        const foundWard = wards.find(w => w.name === normalizedWard);
+                        if (foundWard) finalZone = foundWard.zoneName || foundWard.zone || '';
+                    }
+
+                    return {
+                        customerId: String(getValue(['custid', 'id', 'customerid']) || `CUST-${Date.now()}-${i}`),
+                        name: String(getValue(['name', 'customername', 'ownername']) || 'Unknown'),
+                        propertyType: String(getValue(['propertytype', 'type']) || 'Residential'),
+                        ward: normalizedWard,
+                        zone: finalZone,
+                        phone: String(getValue(['mobile', 'phone', 'contact', 'mob', 'mobileno', 'mobilenumber', 'contactno', 'phoneno']) || ''),
+                        email: String(getValue(['email']) || ''),
+                        address: String(getValue(['address']) || ''),
+                        kycStatus: (getValue(['kycstatus']) || 'Pending') as 'Completed' | 'Pending',
+                        lat: isNaN(lat) ? undefined : lat,
+                        lng: isNaN(lng) ? undefined : lng,
+                        serviceStart: String(getValue(['servicestart']) || ''),
+                        kycDate: String(getValue(['kycdate']) || ''),
+                        supervisor: String(getValue(['supervisor']) || ''),
+                        gazetteRate: parseFloat(getValue(['gazettemonthlyrate', 'gazetterate'])) || 0,
+                        revisedRate: parseFloat(getValue(['revisedmonthlyrate', 'revisedrate'])) || 0,
+                        routeId: String(getValue(['routeid', 'route', 'routecode']) || ''),
+                        lastPayment: String(getValue(['lastpayment']) || ''),
+                        bill: String(getValue(['bill']) || ''),
+                        dues: parseFloat(getValue(['dues'])) || 0
+                    };
+                });
                 
-                // Parse lines
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (!line) continue;
-                    
-                    // Simple CSV handling (handles basic quoted strings)
-                    const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(',');
-                    const obj: any = {};
-                    headers.forEach((header, index) => {
-                        obj[header] = values[index]?.replace(/^"|"$/g, '').trim() || '';
-                    });
-                    
-                    data.push({
-                        customerId: obj.customerid || obj.id || `CUST-${Date.now()}-${i}`,
-                        name: obj.name || obj.customername || 'Unknown',
-                        propertyType: obj.propertytype || 'Residential',
-                        ward: obj.ward || 'Unknown',
-                        phone: obj.phone || obj.mobile || '',
-                        email: obj.email || '',
-                        address: obj.address || '',
-                        kycStatus: (obj.kycstatus || 'Pending') as 'Completed' | 'Pending'
-                    });
-                }
-                
-                fullDataRef.current = data;
-                setTotalDetected(data.length);
-                setPreviewRows(data.slice(0, 100)); // Only keep 100 in state for UI
+                fullDataRef.current = mappedData;
+                setTotalDetected(mappedData.length);
+                setPreviewRows(mappedData.slice(0, 100));
                 setStatus('ready');
             } catch (err: any) {
+                console.error('Parsing error:', err);
                 setErrorMsg(err.message || 'Failed to parse file.');
                 setStatus('error');
             }
         };
-        reader.readAsText(selectedFile);
+        reader.readAsBinaryString(selectedFile);
     };
 
     const handleUpload = async () => {
@@ -101,18 +192,20 @@ const BulkCustomerUploadPage = () => {
         
         try {
             for (let i = 0; i < total; i += batchSize) {
-                // Periodically yield to UI thread to prevent freezing
                 if (i % 500 === 0) {
                     await new Promise(resolve => setTimeout(resolve, 0));
                 }
 
                 const batch = writeBatch(db);
                 const currentBatch = data.slice(i, i + batchSize);
+                const currentUser = auth.currentUser;
+                const userId = currentUser ? currentUser.uid : 'unknown';
                 
                 currentBatch.forEach(customer => {
                     const docRef = doc(db, 'customers', customer.customerId);
                     batch.set(docRef, {
                         ...customer,
+                        userId,
                         updatedAt: new Date().toISOString(),
                         createdAt: new Date().toISOString()
                     });
@@ -126,6 +219,7 @@ const BulkCustomerUploadPage = () => {
             }
             
             setStatus('completed');
+            refreshData();
         } catch (err: any) {
             console.error('Upload error:', err);
             setErrorMsg(`Upload stopped at ${uploadedCount} records: ${err.message}`);
@@ -133,20 +227,54 @@ const BulkCustomerUploadPage = () => {
         }
     };
 
+    const handleRepairMissingIds = async () => {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+
+        if (!window.confirm("This will link all existing customer records that have no owner to your account. This is usually needed after the first import to make them visible. Continue?")) return;
+
+        setIsRepairing(true);
+        try {
+            const q = query(collection(db, 'customers'));
+            const snap = await getDocs(q);
+            const batch = writeBatch(db);
+            let count = 0;
+
+            snap.forEach(d => {
+                const data = d.data();
+                if (!data.userId) {
+                    batch.update(d.ref, { userId: currentUser.uid });
+                    count++;
+                }
+            });
+
+            if (count > 0) {
+                await batch.commit();
+                alert(`Successfully linked ${count} records to your account!`);
+                refreshData();
+            } else {
+                alert("No orphaned records found.");
+            }
+        } catch (e: any) {
+            alert("Error: " + e.message);
+        } finally {
+            setIsRepairing(false);
+        }
+    };
+
     const downloadTemplate = () => {
-        const headers = 'customerId,name,propertyType,ward,phone,email,address,kycStatus';
-        const sample = 'CUST001,John Doe,Residential,Ward 1,9876543210,john@example.com,"123 Street, Mathura",Completed';
-        const blob = new Blob([`${headers}\n${sample}`], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'customer_template.csv';
-        a.click();
+        const headers = ['Cust Id', 'Name', 'Mobile', 'Property Type', 'Zone', 'Ward', 'Latitude', 'Longitude', 'Service Start', 'KYC Date', 'Supervisor', 'Gazette Monthly Rate(₹)', 'Revised Monthly Rate(₹)', 'Last Payment', 'Bill', 'Dues(₹)'];
+        const sampleRow = ['CUST001', 'John Doe', '9876543210', 'Residential', 'Zone A', 'Ward 1', '27.4924', '77.6737', '2024-01-01', '2024-01-10', 'Supv 1', '500', '450', '2024-02-01', 'FEB-2024', '0'];
+        
+        const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Template");
+        XLSX.writeFile(wb, "customer_template.xlsx");
     };
 
     const reset = () => {
         setFile(null);
-        setPreviewData([]);
+        setPreviewRows([]);
         setStatus('idle');
         setProgress(0);
         setErrorMsg('');
@@ -155,10 +283,20 @@ const BulkCustomerUploadPage = () => {
 
     return (
         <div className="space-y-6 p-4">
-            <PageHeader 
-                title="Bulk Customer Upload" 
-                description="Import thousands of customers instantly using CSV or Excel files"
-            />
+            <div className="flex justify-between items-start">
+                <PageHeader 
+                    title="Bulk Customer Upload" 
+                    description="Import thousands of customers instantly using CSV or Excel files"
+                />
+                <button
+                    onClick={handleRepairMissingIds}
+                    disabled={isRepairing}
+                    className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                >
+                    <RefreshCw size={18} className={isRepairing ? "animate-spin" : ""} />
+                    {isRepairing ? "Repairing..." : "Sync Missing Records"}
+                </button>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left: Upload Controls */}
@@ -181,7 +319,7 @@ const BulkCustomerUploadPage = () => {
                                     ref={fileInputRef}
                                     onChange={handleFileChange}
                                     className="hidden"
-                                    accept=".csv"
+                                    accept=".xlsx, .xls, .csv"
                                 />
                                 {file ? (
                                     <div className="space-y-2">
@@ -192,7 +330,7 @@ const BulkCustomerUploadPage = () => {
                                 ) : (
                                     <div className="space-y-2">
                                         <Upload size={48} className="mx-auto text-gray-300" />
-                                        <p className="font-bold text-gray-500">Drop CSV file here</p>
+                                        <p className="font-bold text-gray-500">Drop Excel or CSV file here</p>
                                         <p className="text-[10px] text-gray-400 font-black uppercase">Or click to browse</p>
                                     </div>
                                 )}
@@ -202,7 +340,7 @@ const BulkCustomerUploadPage = () => {
                                 onClick={downloadTemplate}
                                 className="w-full py-4 border-2 border-emerald-100 text-emerald-600 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
                             >
-                                <Download size={16} /> Download CSV Template
+                                <Download size={16} /> Download Excel Template
                             </button>
 
                             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800 flex gap-3">
@@ -210,8 +348,8 @@ const BulkCustomerUploadPage = () => {
                                 <div>
                                     <h4 className="text-sm font-black text-blue-900 dark:text-blue-300">Important Note</h4>
                                     <p className="text-[11px] text-blue-700 dark:text-blue-400 font-medium leading-relaxed mt-1">
-                                        Make sure your CSV contains headers: <strong>name, propertyType, ward, phone</strong>. 
-                                        Maximum 5000 records per upload recommended.
+                                        Make sure your file contains headers like: <strong>Cust Id, Name, Mobile, Ward, Route ID, Latitude, Longitude</strong>. 
+                                        Excel files (.xlsx) are now fully supported.
                                     </p>
                                 </div>
                             </div>
@@ -285,6 +423,7 @@ const BulkCustomerUploadPage = () => {
                                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">Name</th>
                                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">Property</th>
                                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">Ward</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">Route</th>
                                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">Mobile</th>
                                         </tr>
                                     </thead>
@@ -301,6 +440,15 @@ const BulkCustomerUploadPage = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-sm font-bold text-gray-600 dark:text-gray-300">{customer.ward}</td>
+                                                <td className="px-6 py-4">
+                                                    {customer.routeId ? (
+                                                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[10px] font-black">
+                                                            {customer.routeId}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-gray-300 italic">No Route</span>
+                                                    )}
+                                                </td>
                                                 <td className="px-6 py-4 text-sm font-medium text-gray-400">{customer.phone}</td>
                                             </tr>
                                         ))}

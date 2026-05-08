@@ -25,6 +25,18 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/database', 'firebase/storage'],
+            'vendor-leaflet': ['leaflet', 'react-leaflet'],
+            'vendor-recharts': ['recharts'],
+            'vendor-framer': ['framer-motion'],
+          }
+        }
+      }
     }
   };
 });

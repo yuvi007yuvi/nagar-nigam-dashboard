@@ -24,7 +24,8 @@ export const ALL_MODULES = [
   'POI Monitoring',
   'Settings',
   'Vehicle History',
-  'Vehicle Master'
+  'Vehicle Master',
+  'Parking & Dump'
 ];
 
 // Default permissions for roles

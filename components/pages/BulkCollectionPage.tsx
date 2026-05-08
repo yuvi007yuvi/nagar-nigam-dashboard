@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, Filter, Download, MapPin,
@@ -15,6 +15,7 @@ import PageHeader from '../shared/PageHeader';
 import { useData } from '../../services/DataContext';
 import { createAdminData, getAllAdminData, updateAdminData, deleteAdminData, createBulkCollection } from '../../services/databaseService';
 import { auth } from '../../services/firebaseConfig';
+import { isToday, isYesterday, isSameMonth, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 
 const BulkCollectionPage = () => {
     const { bulkCollections, refreshData, zones, wards } = useData();
@@ -112,12 +113,35 @@ const BulkCollectionPage = () => {
         document.body.removeChild(link);
     };
 
-    const summaryCards = [
-        { title: 'Today', total: 40, unique: 40, tat: '1030 m', color: 'bg-purple-500', icon: Calendar },
-        { title: 'Yesterday', total: 44, unique: 44, tat: '1231 m', color: 'bg-pink-500', icon: Calendar },
-        { title: 'Till Month', total: 262, unique: 63, tat: '8525 m', color: 'bg-green-500', icon: Calendar },
-        { title: 'Previous Month', total: 1143, unique: 64, tat: '46815 m', color: 'bg-emerald-500', icon: Calendar },
-    ];
+    const summaryStats = useMemo(() => {
+        const todayDate = new Date();
+        const startOfThisMonth = startOfMonth(todayDate);
+        const startOfPrevMonth = startOfMonth(subMonths(todayDate, 1));
+        const endOfPrevMonth = endOfMonth(startOfPrevMonth);
+
+        const getStatsForPeriod = (filterFn: (d: Date) => boolean) => {
+            const periodData = bulkCollections.filter((col: any) => {
+                const d = col.createdAt?.toDate ? col.createdAt.toDate() : new Date(col.createdAt);
+                return filterFn(d);
+            });
+            return {
+                total: periodData.length,
+                unique: new Set(periodData.map((p: any) => p.siteId || p.qr)).size
+            };
+        };
+
+        const todayStats = getStatsForPeriod((d) => isToday(d));
+        const yesterdayStats = getStatsForPeriod((d) => isYesterday(d));
+        const monthStats = getStatsForPeriod((d) => isSameMonth(d, todayDate));
+        const prevMonthStats = getStatsForPeriod((d) => isWithinInterval(d, { start: startOfPrevMonth, end: endOfPrevMonth }));
+
+        return [
+            { title: 'Today', total: todayStats.total, unique: todayStats.unique, color: 'bg-purple-500', icon: Calendar },
+            { title: 'Yesterday', total: yesterdayStats.total, unique: yesterdayStats.unique, color: 'bg-pink-500', icon: Calendar },
+            { title: 'Till Month', total: monthStats.total, unique: monthStats.unique, color: 'bg-green-500', icon: Calendar },
+            { title: 'Previous Month', total: prevMonthStats.total, unique: prevMonthStats.unique, color: 'bg-emerald-500', icon: Calendar },
+        ];
+    }, [bulkCollections]);
 
     const collectionTypes = [
         { label: 'Hawker', color: '#ff0000' },
@@ -142,7 +166,7 @@ const BulkCollectionPage = () => {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {summaryCards.map((card, i) => (
+                {summaryStats.map((card, i) => (
                     <div key={i} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col p-5 group hover:shadow-md transition-all">
                         <div className="flex items-center gap-3 mb-6">
                             <div className={`p-3 rounded-xl ${card.color} text-white shadow-lg shadow-${card.color.split('-')[1]}-200`}>
@@ -158,10 +182,6 @@ const BulkCollectionPage = () => {
                             <div className="flex justify-between items-center text-sm font-bold">
                                 <span className="text-gray-500">Unique Scans</span>
                                 <span className="text-blue-900">{card.unique}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm font-bold">
-                                <span className="text-gray-500">TAT</span>
-                                <span className="text-blue-900">{card.tat}</span>
                             </div>
                         </div>
                         <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
@@ -234,16 +254,30 @@ const BulkCollectionPage = () => {
                                 />
                                 <KMLLayers visible={true} />
                                 {/* Markers for collection sites */}
-                                {bulkSites.map(site => (
-                                    <Marker key={site.id} position={[27.4924 + (Math.random() - 0.5) * 0.1, 77.6737 + (Math.random() - 0.5) * 0.1]}>
-                                        <Popup>
-                                            <div className="p-2">
-                                                <h3 className="font-bold">{site.name}</h3>
-                                                <p className="text-xs text-gray-500">{site.address}</p>
-                                            </div>
-                                        </Popup>
-                                    </Marker>
-                                ))}
+                                {bulkSites.map(site => {
+                                    const lat = parseFloat(site.latitude);
+                                    const lng = parseFloat(site.longitude);
+                                    
+                                    if (isNaN(lat) || isNaN(lng)) return null;
+
+                                    return (
+                                        <Marker key={site.id} position={[lat, lng]}>
+                                            <Popup>
+                                                <div className="p-2">
+                                                    <h3 className="font-bold text-sm text-blue-900">{site.siteName || site.name}</h3>
+                                                    <div className="flex flex-col gap-1 mt-2">
+                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                            <MapPin size={10} /> {site.ward}
+                                                        </p>
+                                                        <p className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full w-fit">
+                                                            {site.type}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+                                    );
+                                })}
                             </MapContainer>
                         </div>
                     ) : (

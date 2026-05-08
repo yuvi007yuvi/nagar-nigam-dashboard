@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, Plus, Search, Edit2, Trash2, X, Check, Filter, Info, Smartphone, User, MapPin, LayoutGrid, List, Download } from 'lucide-react';
+import { Truck, Plus, Search, Edit2, Trash2, X, Check, Filter, Info, Smartphone, User, MapPin, LayoutGrid, List, Download, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../shared/PageHeader';
 import { createAdminData, getAllAdminData, updateAdminData, deleteAdminData } from '../../services/databaseService';
 import { useLiveTracking } from '../../services/vehicleService';
@@ -31,6 +32,7 @@ const VehicleMasterPage = () => {
     const [showUnknownModal, setShowUnknownModal] = useState(false);
     const [isAddingAll, setIsAddingAll] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+    const navigate = useNavigate();
     const { zones: dynamicZones, wards: dynamicWards } = useData();
 
     const [formData, setFormData] = useState({
@@ -269,6 +271,13 @@ const VehicleMasterPage = () => {
                     >
                         <Download size={18} />
                         Export
+                    </button>
+                    <button
+                        onClick={() => navigate('/bulk-vehicle-upload')}
+                        className="flex-1 md:flex-none px-4 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl font-bold transition-all flex items-center justify-center gap-2 border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100"
+                    >
+                        <Upload size={18} />
+                        Bulk Assign
                     </button>
                     <button
                         onClick={() => handleOpenModal()}

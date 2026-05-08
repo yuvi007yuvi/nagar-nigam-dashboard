@@ -21,19 +21,24 @@ import {
 import { useData } from '../../services/DataContext';
 import PageHeader from '../shared/PageHeader';
 
-const SearchAndFilter = () => (
-    <div className="flex gap-3 mb-6">
+const SearchAndFilter = ({ searchTerm, setSearchTerm, onExport }: any) => (
+    <div className="flex flex-col md:flex-row gap-3 mb-6">
         <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input type="text" placeholder="Search records..." className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all text-sm bg-white dark:bg-gray-700 dark:text-white" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input 
+                type="text" 
+                placeholder="Search by name, ID or mobile..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] shadow-sm focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-bold text-sm text-gray-800 dark:text-white" 
+            />
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm font-medium shadow-sm">
-            <Filter size={16} />
-            Filters
-        </button>
-        <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm font-medium shadow-sm ml-auto">
+        <button 
+            onClick={onExport}
+            className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-black uppercase tracking-widest shadow-sm transition-all"
+        >
             <Download size={16} />
-            Export
+            Export Data
         </button>
     </div>
 );
@@ -63,12 +68,24 @@ const NoDataView = ({ message = "No records found", illustration: Illustration =
 
 // --- Customers Page ---
 const CustomersPage = () => {
-    const { customers, loading, error } = useData();
-    const [filteredCustomers, setFilteredCustomers] = useState<any[]>([]);
+    const { customers, loading, error, zones, wards } = useData();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterZone, setFilterZone] = useState('');
+    const [filterWard, setFilterWard] = useState('');
+    const [filterProperty, setFilterProperty] = useState('');
 
-    useEffect(() => {
-        setFilteredCustomers(customers);
-    }, [customers]);
+    const filteredCustomers = customers.filter(c => {
+        const matchesSearch = !searchTerm || 
+            (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (c.customerId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (c.phone || '').includes(searchTerm);
+        
+        const matchesZone = !filterZone || c.zone === filterZone;
+        const matchesWard = !filterWard || c.ward === filterWard;
+        const matchesProperty = !filterProperty || c.propertyType === filterProperty;
+
+        return matchesSearch && matchesZone && matchesWard && matchesProperty;
+    });
 
     // Stats Card Component for Customers Page
     const CustomerStatCard = ({ label, value, icon: Icon, colorClass, subText }: any) => (
@@ -198,26 +215,56 @@ const CustomersPage = () => {
             </div>
 
             {/* Action Bar */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-end md:items-center bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 w-full md:w-auto">
-                    {/* Filters */}
-                    {['Zone', 'All Wards', 'Property Type', 'Supervisor', 'Last Payment Period'].map((placeholder) => (
-                        <div key={placeholder} className="relative">
-                            <select className="w-full appearance-none bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded-lg px-3 py-2 pr-8 focus:outline-none focus:border-green-500 cursor-pointer">
-                                <option>{placeholder}</option>
-                            </select>
-                            <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        </div>
-                    ))}
-                </div>
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-end md:items-center bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/20">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full">
+                    {/* Zone Filter */}
+                    <div className="relative">
+                        <select 
+                            value={filterZone}
+                            onChange={(e) => { setFilterZone(e.target.value); setFilterWard(''); }}
+                            className="w-full appearance-none bg-gray-50 dark:bg-gray-900 border-none text-gray-800 dark:text-white text-xs font-black uppercase tracking-widest rounded-xl px-4 py-3.5 focus:ring-4 focus:ring-emerald-500/10 cursor-pointer outline-none"
+                        >
+                            <option value="">All Zones</option>
+                            {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
 
-                <div className="flex gap-2 w-full md:w-auto justify-end">
-                    <button className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600">
-                        <Calendar size={14} /> Date Filter
-                    </button>
-                    <button className="flex items-center gap-1.5 px-4 py-2 bg-[#10b981] text-white text-xs font-medium rounded-lg hover:bg-[#059669] shadow-sm shadow-green-200">
-                        <Search size={14} /> Search
-                    </button>
+                    {/* Ward Filter */}
+                    <div className="relative">
+                        <select 
+                            value={filterWard}
+                            onChange={(e) => setFilterWard(e.target.value)}
+                            disabled={!filterZone}
+                            className="w-full appearance-none bg-gray-50 dark:bg-gray-900 border-none text-gray-800 dark:text-white text-xs font-black uppercase tracking-widest rounded-xl px-4 py-3.5 focus:ring-4 focus:ring-emerald-500/10 cursor-pointer outline-none disabled:opacity-50"
+                        >
+                            <option value="">All Wards</option>
+                            {wards.filter(w => w.zoneName === filterZone).map(w => (
+                                <option key={w.id} value={w.name}>{w.name}</option>
+                            ))}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+
+                    {/* Property Filter */}
+                    <div className="relative">
+                        <select 
+                            value={filterProperty}
+                            onChange={(e) => setFilterProperty(e.target.value)}
+                            className="w-full appearance-none bg-gray-50 dark:bg-gray-900 border-none text-gray-800 dark:text-white text-xs font-black uppercase tracking-widest rounded-xl px-4 py-3.5 focus:ring-4 focus:ring-emerald-500/10 cursor-pointer outline-none"
+                        >
+                            <option value="">Property Type</option>
+                            <option value="Residential">Residential</option>
+                            <option value="Commercial">Commercial</option>
+                            <option value="Industrial">Industrial</option>
+                            <option value="Institutional">Institutional</option>
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+
+                    <div className="relative">
+                        <SearchAndFilter searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+                    </div>
                 </div>
             </div>
 
@@ -243,13 +290,13 @@ const CustomersPage = () => {
                                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider w-10 border-r border-green-400/30 text-center">
                                     <div className="flex justify-center">▶</div>
                                 </th>
-                                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">S.No.</th>
-                                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">Customer ID</th>
-                                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">Customer Name</th>
+                                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30 text-center">S.No.</th>
+                                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">Customer Info</th>
                                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">Property Type</th>
+                                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30 text-center">Zone</th>
                                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">Ward</th>
-                                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">Mobile</th>
-                                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">Email</th>
+                                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">Route</th>
+                                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">Contact</th>
                                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">KYC Status</th>
                                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">Last Payment</th>
                                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider border-r border-green-400/30">Actions</th>
@@ -264,17 +311,35 @@ const CustomersPage = () => {
                                                 <input type="checkbox" className="rounded text-green-500 focus:ring-green-500" />
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700 text-xs dark:text-gray-300">{index + 1}</td>
-                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700 text-xs font-medium dark:text-gray-200">{customer.customerId || 'N/A'}</td>
-                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700 text-xs dark:text-gray-300">{customer.name || 'N/A'}</td>
+                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700 text-[10px] dark:text-gray-300 text-center">{index + 1}</td>
+                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700">
+                                            <div className="font-black text-gray-900 dark:text-white uppercase tracking-tight text-xs">{customer.name || 'N/A'}</div>
+                                            <div className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{customer.customerId || 'N/A'}</div>
+                                        </td>
                                         <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700 text-xs">
-                                            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs dark:text-gray-300">
+                                            <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                                                customer.propertyType === 'Residential' ? 'bg-orange-100 text-orange-600' :
+                                                customer.propertyType === 'Commercial' ? 'bg-red-100 text-red-600' :
+                                                customer.propertyType === 'Industrial' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                                            }`}>
                                                 {customer.propertyType || 'N/A'}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700 text-xs dark:text-gray-300">{customer.ward || 'N/A'}</td>
-                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700 text-xs dark:text-gray-300">{customer.phone || 'N/A'}</td>
-                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700 text-xs dark:text-gray-300">{customer.email || 'N/A'}</td>
+                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700 text-[10px] font-bold uppercase tracking-tight text-center">{customer.zone || 'N/A'}</td>
+                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700 text-[10px] font-bold uppercase tracking-tight">{customer.ward || 'N/A'}</td>
+                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700">
+                                            {customer.routeId ? (
+                                                <span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-[9px] font-black uppercase tracking-widest">
+                                                    {customer.routeId}
+                                                </span>
+                                            ) : (
+                                                <span className="text-[9px] text-gray-300 italic uppercase">No Route</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700">
+                                            <div className="text-[10px] font-bold text-gray-600 dark:text-gray-300">{customer.phone || 'N/A'}</div>
+                                            <div className="text-[9px] text-gray-400">{customer.email || ''}</div>
+                                        </td>
                                         <td className="px-4 py-3 border-r border-gray-100 dark:border-gray-700 text-xs">
                                             {customer.kycStatus === 'Completed' ? (
                                                 <span className="flex items-center gap-1 text-green-600 dark:text-green-400">

@@ -7,6 +7,10 @@ interface MapSettingsOverlayProps {
     setMapType: (type: 'street' | 'satellite') => void;
     showKMLLayers: boolean;
     setShowKMLLayers: (show: boolean) => void;
+    showParking?: boolean;
+    setShowParking?: (show: boolean) => void;
+    showDump?: boolean;
+    setShowDump?: (show: boolean) => void;
     position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
 }
 
@@ -15,6 +19,10 @@ const MapSettingsOverlay: React.FC<MapSettingsOverlayProps> = ({
     setMapType,
     showKMLLayers,
     setShowKMLLayers,
+    showParking,
+    setShowParking,
+    showDump,
+    setShowDump,
     position = 'top-right'
 }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -96,6 +104,44 @@ const MapSettingsOverlay: React.FC<MapSettingsOverlayProps> = ({
                                         <div className={`absolute top-1 w-2 h-2 bg-white rounded-full transition-all ${showKMLLayers ? 'left-5' : 'left-1'}`}></div>
                                     </div>
                                 </button>
+
+                                {setShowParking && (
+                                    <button
+                                        onClick={() => setShowParking(!showParking)}
+                                        className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all ${
+                                            showParking 
+                                            ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' 
+                                            : 'bg-gray-50 dark:bg-gray-800/50 text-gray-500 border border-transparent'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                            <span className="text-xs font-black uppercase tracking-tight">Parking</span>
+                                        </div>
+                                        <div className={`w-8 h-4 rounded-full relative transition-colors ${showParking ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                            <div className={`absolute top-1 w-2 h-2 bg-white rounded-full transition-all ${showParking ? 'left-5' : 'left-1'}`}></div>
+                                        </div>
+                                    </button>
+                                )}
+
+                                {setShowDump && (
+                                    <button
+                                        onClick={() => setShowDump(!showDump)}
+                                        className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all ${
+                                            showDump 
+                                            ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' 
+                                            : 'bg-gray-50 dark:bg-gray-800/50 text-gray-500 border border-transparent'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                            <span className="text-xs font-black uppercase tracking-tight">Dump Sites</span>
+                                        </div>
+                                        <div className={`w-8 h-4 rounded-full relative transition-colors ${showDump ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                            <div className={`absolute top-1 w-2 h-2 bg-white rounded-full transition-all ${showDump ? 'left-5' : 'left-1'}`}></div>
+                                        </div>
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     )}

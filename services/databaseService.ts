@@ -72,7 +72,24 @@ export const getAllDocuments = async (collectionName: string) => {
 
     return { success: true, data: documents };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+// Get recent documents with a limit (for dashboard-level queries)
+export const getRecentDocuments = async (collectionName: string, maxDocs: number = 1000) => {
+  try {
+    const q = query(collection(db, collectionName), orderBy('createdAt', 'desc'), limit(maxDocs));
+    const querySnapshot = await getDocs(q);
+    const documents: any[] = [];
+    querySnapshot.forEach((doc) => {
+      documents.push({ id: doc.id, ...doc.data() });
+    });
+
+    return { success: true, data: documents };
+  } catch (error: any) {
+    // Fallback to unlimited if orderBy fails (no index)
+    return getAllDocuments(collectionName);
   }
 };
 
@@ -275,3 +292,7 @@ export const getAllAdminData = (collectionName: string) => getAllDocuments(colle
 export const getAdminDataById = (collectionName: string, id: string) => getDocumentById(collectionName, id);
 export const updateAdminData = (collectionName: string, id: string, data: any) => updateDocument(collectionName, id, data);
 export const deleteAdminData = (collectionName: string, id: string) => deleteDocument(collectionName, id);
+
+// Application Settings (KPI Thresholds, etc.)
+export const getAppSettings = (settingId: string) => getDocumentById('appSettings', settingId);
+export const updateAppSettings = (settingId: string, data: any) => setDocument('appSettings', settingId, data);

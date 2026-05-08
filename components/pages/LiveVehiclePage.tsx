@@ -14,15 +14,11 @@ import {
 } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
 import KMLLayers from '../shared/KMLLayers';
+import AssetLayers from '../shared/AssetLayers';
 import MapSettingsOverlay from '../shared/MapSettingsOverlay';
 import { getAuth } from 'firebase/auth';
 import { useVehicleData } from '../../services/vehicleService';
 import { useData } from '../../services/DataContext';
-import vehicleTopDown from '../images/top-down-vehicle.png';
-import vehicleStoppedTopDown from '../images/top-down-vehicle-stopped.png';
-import vehicleOfflineTopDown from '../images/top-down-vehicle-offline.png';
-import truckTopDown from '../images/top-down-truck.png';
-
 // Fix for default marker icon
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -40,28 +36,64 @@ const getVehicleIcon = (speed: string | number, angle: string | number = 0, name
     const s = typeof speed === 'string' ? parseInt(speed) : speed;
     const a = typeof angle === 'string' ? parseInt(angle) : angle;
     const isMoving = s > 0 && !isOffline;
+    
+    // Status-based colors
+    const color = isOffline ? '#ef4444' : (isMoving ? '#10b981' : '#f59e0b');
     const isTruck = name.toLowerCase().includes('compactor') || name.toLowerCase().includes('truck');
+    const isTipper = name.toLowerCase().includes('tipper') || name.toLowerCase().includes('auto');
 
-    // Choose icon base
-    let iconUrl = isMoving ? vehicleTopDown : vehicleStoppedTopDown;
-    if (isOffline) iconUrl = vehicleOfflineTopDown;
-    if (isTruck && !isOffline) iconUrl = truckTopDown;
+    const svg = `
+      <div style="position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+        <!-- Detailed Premium Icon -->
+        <div style="transform: rotate(${a}deg); transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 10;">
+          <svg width="${isTruck ? '34' : '28'}" height="${isTruck ? '34' : '28'}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+            ${isTruck ? `
+              <!-- Truck Chassis -->
+              <rect x="18" y="8" width="28" height="48" rx="2" fill="${color}" fill-opacity="0.8"/>
+              <!-- Compactor Body -->
+              <path d="M20 22H44V50C44 51.1046 43.1046 52 42 52H22C20.8954 52 20 51.1046 20 50V22Z" fill="${color}"/>
+              <!-- Rear Hopper -->
+              <path d="M20 50H44V54C44 55.1046 43.1046 56 42 56H22C20.8954 56 20 55.1046 20 54V50Z" fill="${color}" fill-opacity="0.9"/>
+              <!-- Cab Section -->
+              <rect x="20" y="10" width="24" height="12" rx="2" fill="${color}"/>
+              <!-- Windshield -->
+              <path d="M22 11.5C22 10.9477 22.4477 10.5 23 10.5H41C41.5523 10.5 42 10.9477 42 11.5V15C42 16.1046 41.1046 17 40 17H24C22.8954 17 22 16.1046 22 15V11.5Z" fill="#bae6fd" fill-opacity="0.9"/>
+              <!-- Wheels -->
+              <rect x="15" y="14" width="4" height="10" rx="1" fill="#111827"/>
+              <rect x="45" y="14" width="4" height="10" rx="1" fill="#111827"/>
+              <rect x="15" y="40" width="4" height="12" rx="1" fill="#111827"/>
+              <rect x="45" y="40" width="4" height="12" rx="1" fill="#111827"/>
+            ` : `
+              <!-- Tipper Chassis -->
+              <rect x="22" y="12" width="20" height="40" rx="1" fill="${color}" fill-opacity="0.8"/>
+              <!-- Tipper Bed -->
+              <path d="M24 24H40V48C40 49.1046 39.1046 50 38 50H26C24.8954 50 24 49.1046 24 48V24Z" fill="${color}"/>
+              <!-- Cab -->
+              <rect x="23" y="14" width="18" height="10" rx="1" fill="${color}"/>
+              <!-- Windshield -->
+              <rect x="24.5" y="15" width="15" height="4" rx="0.5" fill="#bae6fd" fill-opacity="0.9"/>
+              <!-- Wheels -->
+              <rect x="19" y="16" width="3" height="6" rx="0.5" fill="#111827"/>
+              <rect x="42" y="16" width="3" height="6" rx="0.5" fill="#111827"/>
+              <rect x="19" y="42" width="3" height="8" rx="0.5" fill="#111827"/>
+              <rect x="42" y="42" width="3" height="8" rx="0.5" fill="#111827"/>
+            `}
+          </svg>
+        </div>
 
-    const color = isOffline ? '#ef4444' : (isMoving ? '#22c55e' : '#f59e0b');
+        <!-- Label Indicator -->
+        <div style="position: absolute; bottom: 0; right: 0; background: ${color}; color: white; padding: 2px 4px; border-radius: 4px; font-size: 8px; font-weight: 900; border: 1.5px solid white; z-index: 20; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          ${isTruck ? 'T' : (isTipper ? 'A' : 'V')}
+        </div>
+      </div>
+    `;
 
     return new L.DivIcon({
         className: 'custom-vehicle-marker',
-        html: `
-          <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
-            ${isMoving ? `<div style="position: absolute; width: 38px; height: 38px; border-radius: 50%; border: 3px solid ${color}; opacity: 0.5; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>` : ''}
-            <div style="transform: rotate(${a}deg); transition: transform 0.5s ease; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-              <img src="${iconUrl}" style="width: ${isTruck ? '40px' : '34px'}; height: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));" />
-            </div>
-          </div>
-        `,
-        iconSize: [44, 44],
-        iconAnchor: [22, 22],
-        popupAnchor: [0, -22]
+        html: svg,
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
+        popupAnchor: [0, -24]
     });
 };
 
@@ -85,8 +117,15 @@ const LiveVehiclePage = () => {
     }, []);
 
     const vehicles = useMemo(() => {
-        const registeredImeis = new Set(registeredVehicles.map(v => v.imei));
-        return liveVehicles.filter(v => registeredImeis.has(v.imei));
+        const registeredMap = new Map(registeredVehicles.map(v => [v.imei, v]));
+        return liveVehicles.map(v => {
+            const registered = registeredMap.get(v.imei) as any;
+            return {
+                ...v,
+                displayName: registered?.registrationNumber || v.name || v.imei || 'Unknown',
+                metadata: registered || null
+            };
+        });
     }, [liveVehicles, registeredVehicles]);
 
     const loading = liveLoading || isRegLoading;
@@ -95,6 +134,7 @@ const LiveVehiclePage = () => {
     const [showReport, setShowReport] = useState(false);
     const [reportData, setReportData] = useState<any[]>([]);
     const [activeReport, setActiveReport] = useState<string>('');
+    const [searchTerm, setSearchTerm] = useState('');
     const [reportFilters, setReportFilters] = useState({
         zone: '',
         ward: '',
@@ -106,6 +146,8 @@ const LiveVehiclePage = () => {
 
     const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
     const [showKMLLayers, setShowKMLLayers] = useState(false);
+    const [showParking, setShowParking] = useState(false);
+    const [showDump, setShowDump] = useState(false);
 
     const [user, setUser] = useState<any>(null);
     useEffect(() => {
@@ -125,20 +167,19 @@ const LiveVehiclePage = () => {
     const userName = user?.displayName || user?.email?.split('@')[0] || 'Administrator';
 
     const handleGenerateReport = (reportType: string) => {
-        setGeneratingReport(reportType);
         setActiveReport(reportType);
-
+        setGeneratingReport(reportType);
         setTimeout(() => {
             setGeneratingReport(null);
             setShowReport(true);
-
-            // Generate high-fidelity dynamic data based on current vehicles
-            if (reportType === 'POI Report' || reportType === 'Coverage Overview') {
+            
+            // Mock report data based on current vehicles
+            if (reportType === 'Coverage Overview') {
                 const data = vehicles.slice(0, 10).map((v, i) => ({
                     sno: i + 1,
                     zone: 'Zone ' + (i % 3 + 1),
                     ward: 'Ward ' + (i + 1),
-                    vehicle: v.name,
+                    vehicle: v.displayName,
                     vtype: 'Primary - Auto Tipper',
                     route: 'R' + (i + 1),
                     total: 300 + i * 10,
@@ -153,7 +194,7 @@ const LiveVehiclePage = () => {
             } else if (reportType === 'Trip Report') {
                 const data = vehicles.slice(0, 8).map((v, i) => ({
                     sno: i + 1,
-                    vehicle: v.name.split(' ')[1] || v.name,
+                    vehicle: v.displayName,
                     driver: 'Staff ' + (i + 1),
                     trips: (i % 3) + 1,
                     distance: (20 + i * 5) + '.2 km',
@@ -166,7 +207,7 @@ const LiveVehiclePage = () => {
             } else {
                 const data = vehicles.slice(0, 8).map((v, i) => ({
                     sno: i + 1,
-                    vehicle: v.name.split(' ')[1] || v.name,
+                    vehicle: v.displayName,
                     zone: 'Zone ' + (i % 3 + 1),
                     distance: (30 + i * 4) + '.5 km',
                     fuel: (5 + i).toFixed(1) + 'L',
@@ -186,24 +227,33 @@ const LiveVehiclePage = () => {
         const detailedVehicles = vehicles.map(v => {
             const lastUpdate = new Date(v.dt_tracker);
             const diffMinutes = (now.getTime() - lastUpdate.getTime()) / (1000 * 60);
-            const isOffline = diffMinutes > 10;
-            return { ...v, isOffline };
+            
+            // If the time difference is negative or very small, it's likely a timezone issue or just updated
+            // We'll consider > 20 minutes as offline to be safe with timezone skews
+            const isOffline = diffMinutes > 20 || isNaN(diffMinutes);
+            const speed = parseInt(v.speed) || 0;
+            
+            return { ...v, isOffline, speedNum: speed };
         });
 
-        const running = detailedVehicles.filter(v => !v.isOffline && parseInt(v.speed) > 0).length;
-        const stopped = detailedVehicles.filter(v => !v.isOffline && parseInt(v.speed) === 0).length;
         const offline = detailedVehicles.filter(v => v.isOffline).length;
+        const onlineCount = detailedVehicles.filter(v => !v.isOffline).length;
+        const onlineVehicles = detailedVehicles.filter(v => !v.isOffline);
+        
+        const running = onlineVehicles.filter(v => v.speedNum > 2).length;
+        const overspeeding = onlineVehicles.filter(v => v.speedNum > 40).length;
+        const standing = onlineVehicles.filter(v => v.speedNum <= 2).length;
 
-        return { total, running, stopped, offline, detailedVehicles };
+        return { total, online: onlineCount, offline, running, overspeeding, standing, detailedVehicles };
     }, [vehicles]);
 
     const coverageStats = [
-        { label: 'Total', value: stats.total.toString(), icon: Layers, color: 'text-purple-600 bg-purple-100', sub: 'View More' },
-        { label: 'Data Not Receiving', value: stats.offline.toString(), icon: WifiOff, color: 'text-orange-500 bg-orange-100', sub: 'View More' },
-        { label: 'Running', value: stats.running.toString(), icon: PlayCircle, color: 'text-green-500 bg-green-100', sub: 'View More' },
-        { label: 'Over Speeding', value: '0', icon: OctagonAlert, color: 'text-red-500 bg-red-100', sub: 'View More' },
-        { label: 'Standing', value: '0', icon: PauseCircle, color: 'text-pink-500 bg-pink-100', sub: 'View More' },
-        { label: 'Stopped', value: stats.stopped.toString(), icon: StopCircle, color: 'text-blue-500 bg-blue-100', sub: 'View More' },
+        { label: 'Total Fleet', value: stats.total.toString(), icon: Layers, color: 'text-purple-600 bg-purple-100', sub: 'View All' },
+        { label: 'Total Online', value: stats.online.toString(), icon: CheckCircle, color: 'text-emerald-500 bg-emerald-100', sub: 'Active Now' },
+        { label: 'Running', value: stats.running.toString(), icon: PlayCircle, color: 'text-green-500 bg-green-100', sub: 'On Move' },
+        { label: 'Standing', value: stats.standing.toString(), icon: PauseCircle, color: 'text-blue-500 bg-blue-100', sub: 'Idling' },
+        { label: 'Over Speeding', value: stats.overspeeding.toString(), icon: OctagonAlert, color: 'text-red-500 bg-red-100', sub: 'Alerts' },
+        { label: 'Offline', value: stats.offline.toString(), icon: WifiOff, color: 'text-orange-500 bg-orange-100', sub: 'No Data' },
     ];
 
     const CoverageStatCard = ({ label, value, icon: Icon, color, sub }: any) => (
@@ -294,6 +344,8 @@ const LiveVehiclePage = () => {
                             <input
                                 type="text"
                                 placeholder="Search vehicle..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg focus:outline-none focus:border-green-500"
                             />
                         </div>
@@ -304,14 +356,16 @@ const LiveVehiclePage = () => {
                         ) : vehicles.length === 0 ? (
                             <div className="text-center py-8 text-gray-500 text-sm">No vehicles found</div>
                         ) : (
-                            vehicles.map((vehicle, idx) => (
+                            stats.detailedVehicles
+                                .filter(v => (v.displayName || '').toLowerCase().includes(searchTerm.toLowerCase()) || (v.imei || '').includes(searchTerm))
+                                .map((vehicle, idx) => (
                                 <div
                                     key={`${vehicle.imei}-${idx}`}
                                     className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedVehicle === vehicle.imei ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-green-200 dark:hover:border-green-700'}`}
                                     onClick={() => setSelectedVehicle(vehicle.imei)}
                                 >
                                     <div className="flex justify-between items-start mb-1">
-                                        <span className="font-bold text-xs text-gray-800 dark:text-gray-200">{vehicle.name}</span>
+                                        <span className="font-bold text-xs text-gray-800 dark:text-gray-200">{vehicle.displayName}</span>
                                         <span className={`text-[10px] px-1.5 py-0.5 rounded ${parseInt(vehicle.speed) > 0 ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
                                             {parseInt(vehicle.speed) > 0 ? `${vehicle.speed} km/h` : 'Stopped'}
                                         </span>
@@ -341,12 +395,13 @@ const LiveVehiclePage = () => {
                             }
                         />
                         <KMLLayers visible={showKMLLayers} />
+                        <AssetLayers showParking={showParking} showDump={showDump} />
 
                         {stats.detailedVehicles.map((vehicle, idx) => (
                             <Marker
                                 key={`${vehicle.imei}-${idx}`}
                                 position={[parseFloat(vehicle.lat), parseFloat(vehicle.lng)]}
-                                icon={getVehicleIcon(vehicle.speed, vehicle.angle, vehicle.name, vehicle.isOffline)}
+                                icon={getVehicleIcon(vehicle.speed, vehicle.angle, vehicle.displayName, vehicle.isOffline)}
                                 eventHandlers={{
                                     click: () => setSelectedVehicle(vehicle.imei),
                                 }}
@@ -354,7 +409,7 @@ const LiveVehiclePage = () => {
                                 <Popup>
                                     <div className="p-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <h3 className="font-bold text-sm">{vehicle.name}</h3>
+                                            <h3 className="font-bold text-sm">{vehicle.displayName}</h3>
                                             {vehicle.isOffline && <span className="text-[8px] font-black bg-red-100 text-red-600 px-1 rounded">OFFLINE</span>}
                                         </div>
                                         <div className="text-xs space-y-1">
@@ -373,6 +428,10 @@ const LiveVehiclePage = () => {
                         setMapType={setMapType}
                         showKMLLayers={showKMLLayers}
                         setShowKMLLayers={setShowKMLLayers}
+                        showParking={showParking}
+                        setShowParking={setShowParking}
+                        showDump={showDump}
+                        setShowDump={setShowDump}
                         position="top-right"
                     />
 
@@ -448,8 +507,10 @@ const LiveVehiclePage = () => {
                                         className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-40"
                                     >
                                         <option value="All">All Vehicles</option>
-                                        {vehicles.map(v => (
-                                            <option key={v.id}>{v.registrationNumber}</option>
+                                        {vehicles.map((v, idx) => (
+                                            <option key={v.imei || idx} value={v.displayName}>
+                                                {v.displayName}
+                                            </option>
                                         ))}
                                     </select>
                                     <select

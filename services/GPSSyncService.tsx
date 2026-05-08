@@ -1,13 +1,31 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { fetchVehicleData, updateLiveTracking, saveHistorySnapshot } from './vehicleService';
 import { getAllAdminData } from './databaseService';
-import { rtdb } from './firebaseConfig';
+import { rtdb, db } from './firebaseConfig';
 import { ref, get, set } from 'firebase/database';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { useData } from './DataContext';
 
-const GPS_FETCH_INTERVAL = 180000; // Fetch every 3 minutes (180s) to save quota
-const HISTORY_SNAPSHOT_INTERVAL = 180000; // Save to Firestore every 3 minutes
+// Helper to calculate distance between two coordinates in meters
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // metres
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // in meters
+};
+
+const GPS_FETCH_INTERVAL = 60000; // Fetch every 60 seconds (1 min) for better granularity
+const HISTORY_SNAPSHOT_INTERVAL = 120000; // Save to Firestore every 2 minutes
 const MASTER_TIMEOUT = 30000; // 30 seconds
-const MOVEMENT_THRESHOLD = 0.0003; // ~30 meters in lat/lng delta
+const MOVEMENT_THRESHOLD = 0.0001; // ~10 meters in lat/lng delta - capture even slow movement
 
 // Generate a unique ID for this tab/session
 const myClientId = Math.random().toString(36).substring(7);
@@ -18,6 +36,22 @@ export const GPSSyncService: React.FC = () => {
     const vehicleConfigsRef = useRef<any[]>([]);
     const lastConfigFetchRef = useRef<number>(0);
     const quotaExceededRef = useRef<boolean>(false);
+    const { customers, coverageRecords, refreshData } = useData();
+    const sessionCoveredTodayRef = useRef<Set<string>>(new Set());
+    const [lastRefreshTime, setLastRefreshTime] = useState(0);
+
+    // Sync sessionCoveredToday with actual coverageRecords on mount/refresh
+    useEffect(() => {
+        const today = new Date().toDateString();
+        const covered = new Set<string>();
+        coverageRecords.forEach(r => {
+            const rDate = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+            if (rDate.toDateString() === today) {
+                covered.add(r.customerId);
+            }
+        });
+        sessionCoveredTodayRef.current = covered;
+    }, [coverageRecords]);
 
     useEffect(() => {
         let lastHistorySnapshot = 0;
@@ -48,16 +82,6 @@ export const GPSSyncService: React.FC = () => {
             }
         };
 
-        const hasMovedSignificantly = (imei: string, lat: number, lng: number) => {
-            const last = lastPositionsRef.current.get(imei);
-            if (!last) return true; // New vehicle, always sync
-
-            const deltaLat = Math.abs(last.lat - lat);
-            const deltaLng = Math.abs(last.lng - lng);
-            
-            return deltaLat > MOVEMENT_THRESHOLD || deltaLng > MOVEMENT_THRESHOLD;
-        };
-
         const sync = async () => {
             const amIMaster = await checkMaster();
             if (!amIMaster) return;
@@ -86,23 +110,20 @@ export const GPSSyncService: React.FC = () => {
                 const rawData = await fetchVehicleData();
                 if (rawData && rawData.length > 0) {
                     
-                    // Filter for movement and master config
-                    const movedVehicles = rawData.filter(v => {
+                    // Update movement status for all vehicles
+                    rawData.forEach(v => {
                         const lat = parseFloat(v.lat);
                         const lng = parseFloat(v.lng);
-                        const moved = hasMovedSignificantly(v.imei, lat, lng);
-                        
-                        if (moved) {
+                        if (!isNaN(lat) && !isNaN(lng)) {
                             lastPositionsRef.current.set(v.imei, { lat, lng });
                         }
-                        return moved;
                     });
 
-                    const liveTrackingData = movedVehicles.filter(v => {
+                    const liveTrackingData = rawData.filter(v => {
                         return trackingEnabledMap.get(v.imei) !== false;
                     });
 
-                    const historyData = movedVehicles.filter(v => {
+                    const historyData = rawData.filter(v => {
                         return historyEnabledMap.get(v.imei) !== false;
                     });
 
@@ -112,17 +133,76 @@ export const GPSSyncService: React.FC = () => {
                     }
 
                     // 4. Throttled History Snapshots (Firestore) - Only if quota not exceeded
-                    const now = Date.now();
-                    if (!quotaExceededRef.current && (now - lastHistorySnapshot >= HISTORY_SNAPSHOT_INTERVAL)) {
+                    const timestamp = Date.now();
+                    if (!quotaExceededRef.current && (timestamp - lastHistorySnapshot >= HISTORY_SNAPSHOT_INTERVAL)) {
                         if (historyData.length > 0) {
                             try {
                                 await saveHistorySnapshot(historyData);
-                                lastHistorySnapshot = now;
+                                lastHistorySnapshot = timestamp;
                             } catch (error: any) {
                                 if (error.message?.includes('quota-exceeded') || error.code === 'resource-exhausted') {
                                     console.error('Firestore Quota Exceeded. Stopping history writes for today.');
                                     quotaExceededRef.current = true;
                                 }
+                            }
+                        }
+                    }
+
+                    // 5. LIVE COVERAGE MATCHING
+                    if (liveTrackingData.length > 0 && customers.length > 0) {
+                        let newCoverageCreated = false;
+
+                        for (const vehicle of liveTrackingData) {
+                            const vLat = parseFloat(vehicle.lat);
+                            const vLng = parseFloat(vehicle.lng);
+                            if (isNaN(vLat) || isNaN(vLng)) continue;
+
+                            // Find vehicle config for assigned route
+                            const config = vehicleConfigs.find(c => c.imei === vehicle.imei);
+                            const assignedRoute = config?.assignedRouteId;
+                            if (!assignedRoute) continue;
+
+                            // Filter POIs on this route that are NOT covered today
+                            const routePOIs = customers.filter(p => 
+                                p.routeId === assignedRoute && 
+                                !sessionCoveredTodayRef.current.has(p.customerId || p.id)
+                            );
+
+                            for (const poi of routePOIs) {
+                                if (!poi.lat || !poi.lng) continue;
+
+                                const dist = calculateDistance(vLat, vLng, poi.lat, poi.lng);
+                                if (dist <= 50) { // 50 meter threshold
+                                    try {
+                                        // Create coverage record
+                                        await addDoc(collection(db, 'coverageRecords'), {
+                                            customerId: poi.customerId || poi.id,
+                                            customerName: poi.name || poi.ownerName || 'Unknown',
+                                            vehicleId: config.plateNumber || config.name || vehicle.imei,
+                                            ward: poi.ward || config.ward || '',
+                                            zone: poi.zone || config.zone || '',
+                                            routeId: assignedRoute,
+                                            status: 'Visited',
+                                            createdAt: serverTimestamp(),
+                                            source: 'Live Tracking'
+                                        });
+                                        
+                                        sessionCoveredTodayRef.current.add(poi.customerId || poi.id);
+                                        newCoverageCreated = true;
+                                        console.log(`Live Coverage Captured: ${poi.name} by ${config.plateNumber}`);
+                                    } catch (e) {
+                                        console.error('Error creating live coverage record:', e);
+                                    }
+                                }
+                            }
+                        }
+
+                        if (newCoverageCreated) {
+                            // Data updated, trigger refresh for UI if enough time passed
+                            const now = Date.now();
+                            if (now - lastRefreshTime > 10000) {
+                                refreshData();
+                                setLastRefreshTime(now);
                             }
                         }
                     }
@@ -135,8 +215,7 @@ export const GPSSyncService: React.FC = () => {
         sync();
         const interval = setInterval(sync, GPS_FETCH_INTERVAL);
         return () => clearInterval(interval);
-    }, []);
+    }, [customers, coverageRecords, refreshData, lastRefreshTime]);
 
     return null; 
 };
-
