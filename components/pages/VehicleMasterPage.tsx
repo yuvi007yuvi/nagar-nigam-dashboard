@@ -18,6 +18,7 @@ interface Vehicle {
     zone: string;
     ward: string;
     status: 'Active' | 'Maintenance' | 'Inactive';
+    assignedRouteId?: string;
     isTrackingEnabled: boolean;
     isHistoryLoggingEnabled: boolean;
 }
@@ -45,6 +46,7 @@ const VehicleMasterPage = () => {
         zone: 'Zone 1',
         ward: 'Ward 01',
         status: 'Active' as const,
+        assignedRouteId: '',
         isTrackingEnabled: true,
         isHistoryLoggingEnabled: true
     });
@@ -79,6 +81,7 @@ const VehicleMasterPage = () => {
                 zone: vehicle.zone,
                 ward: vehicle.ward,
                 status: vehicle.status,
+                assignedRouteId: vehicle.assignedRouteId || '',
                 isTrackingEnabled: vehicle.isTrackingEnabled ?? true,
                 isHistoryLoggingEnabled: vehicle.isHistoryLoggingEnabled ?? true
             });
@@ -94,6 +97,7 @@ const VehicleMasterPage = () => {
                 zone: 'Zone 1',
                 ward: 'Ward 01',
                 status: 'Active',
+                assignedRouteId: '',
                 isTrackingEnabled: true,
                 isHistoryLoggingEnabled: true
             });
@@ -155,6 +159,7 @@ const VehicleMasterPage = () => {
             zone: 'Zone 1',
             ward: 'Ward 01',
             status: 'Active',
+            assignedRouteId: '',
             isTrackingEnabled: true,
             isHistoryLoggingEnabled: true
         });
@@ -178,6 +183,7 @@ const VehicleMasterPage = () => {
                     zone: 'Zone 1',
                     ward: 'Ward 01',
                     status: 'Active',
+                    assignedRouteId: '',
                     isTrackingEnabled: true,
                     isHistoryLoggingEnabled: true
                 });
@@ -679,6 +685,17 @@ const VehicleMasterPage = () => {
                                                 .map(w => <option key={w.id} value={w.name}>{w.name}</option>)
                                             }
                                         </select>
+                                    </div>
+                                    <div className="col-span-full space-y-2">
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Assigned Route ID(s)</label>
+                                        <input
+                                            type="text"
+                                            value={formData.assignedRouteId}
+                                            onChange={(e) => setFormData({...formData, assignedRouteId: e.target.value})}
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 transition-all border-none font-bold"
+                                            placeholder="e.g. W24R1; W24R2 (Use semicolon for multiple)"
+                                        />
+                                        <p className="text-[10px] text-gray-400 italic">For multiple routes, separate them with a semicolon (e.g., R1; R2)</p>
                                     </div>
                                     <div className="col-span-full grid grid-cols-2 gap-6 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl">
                                         <div className="flex items-center justify-between">

@@ -245,8 +245,8 @@ const POIMonitoringPage = () => {
                 filteredSource.forEach(p => {
                     const rId = p.routeId || 'Unassigned';
                     if (!routeGroups[rId]) {
-                        // Find vehicle assigned to this route (handle exact match or comma/semicolon separated lists)
-                        const assignedVehicle = allVehicles.find(v => {
+                        // Find ALL vehicles assigned to this route
+                        const assignedVehicles = allVehicles.filter(v => {
                             const routeStr = v.allAssignedRoutes || v.assignedRouteId || '';
                             if (!routeStr) return false;
                             const routes = routeStr.toString().split(/[;,]/).map((r: string) => r.trim());
@@ -259,8 +259,12 @@ const POIMonitoringPage = () => {
                         routeGroups[rId] = {
                             zone: p.zone || wardInfo?.zoneName || 'N/A',
                             ward: p.ward || 'N/A',
-                            vehicle: assignedVehicle?.plateNumber || assignedVehicle?.name || p.vehicleId || 'N/A',
-                            vtype: assignedVehicle?.type || 'Auto Tipper',
+                            vehicle: assignedVehicles.length > 0 
+                                ? assignedVehicles.map(v => v.plateNumber || v.name).join(', ') 
+                                : p.vehicleId || 'N/A',
+                            vtype: assignedVehicles.length > 0 
+                                ? Array.from(new Set(assignedVehicles.map(v => v.type))).join(', ') 
+                                : 'Auto Tipper',
                             route: rId,
                             total: 0,
                             covered: 0,
