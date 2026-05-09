@@ -22,6 +22,7 @@ const BulkVehicleUploadPage = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [status, setStatus] = useState<{msg: string, type: 'success' | 'error' | 'info'} | null>(null);
     const [stats, setStats] = useState({ total: 0, updated: 0, created: 0, failed: 0 });
+    const [progress, setProgress] = useState(0);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -42,6 +43,7 @@ const BulkVehicleUploadPage = () => {
         if (data.length === 0) return;
         setIsUploading(true);
         setStatus({ msg: 'Processing bulk assignment...', type: 'info' });
+        setProgress(0);
         
         let updated = 0;
         let created = 0;
@@ -82,9 +84,22 @@ const BulkVehicleUploadPage = () => {
                     batch.update(docRef, vehicleData);
                     updated++;
                 } else {
-                    // Skip if vehicle doesn't exist in master
-                    failed++;
+                    // Create new if doesn't exist
+                    const newDocRef = doc(collection(db, 'vehicles'));
+                    batch.set(newDocRef, {
+                        ...vehicleData,
+                        imei: '', // Default empty IMEI for new registrations
+                        createdAt: Timestamp.now(),
+                        status: 'Active',
+                        isTrackingEnabled: true,
+                        isHistoryLoggingEnabled: true,
+                        name: plateNumber // Use plate as default name
+                    });
+                    created++;
                 }
+
+                // Update progress
+                setProgress(Math.round(((i + 1) / data.length) * 100));
 
                 // Commit batch every 400 docs to be safe
                 if ((updated + created + failed) % 400 === 0) {
@@ -155,6 +170,22 @@ const BulkVehicleUploadPage = () => {
                                     </motion.div>
                                 )}
                             </AnimatePresence>
+
+                            {isUploading && (
+                                <div className="w-full space-y-2">
+                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                                        <span>Importing Data...</span>
+                                        <span>{progress}%</span>
+                                    </div>
+                                    <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${progress}%` }}
+                                            className="h-full bg-emerald-500 rounded-full"
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <button
                                 onClick={handleUpload}

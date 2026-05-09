@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Upload, FileText, Trash2, CheckCircle2, AlertCircle, 
     Layers, Plus, Filter, Search, Map as MapIcon, 
-    Navigation, Save, X, ChevronRight, Globe, RefreshCw, List, Database
+    Navigation, Save, X, ChevronRight, Globe, RefreshCw, List, Database, Truck
 } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
 import { db } from '../../services/firebaseConfig';
@@ -100,7 +102,8 @@ interface RouteLayer {
 }
 
 const RouteMasterPage = () => {
-    const { zones, wards, refreshData: refreshGlobalData } = useData();
+    const navigate = useNavigate();
+    const { zones, wards, vehicles: allVehicles, refreshData: refreshGlobalData } = useData();
     const [routes, setRoutes] = useState<RouteLayer[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -350,26 +353,50 @@ const RouteMasterPage = () => {
         setStatus({ type: 'info', message: 'Processing bulk file...' });
 
         try {
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const data = new Uint8Array(e.target?.result as ArrayBuffer);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet) as any[];
+            const isCSV = bulkFile.name.toLowerCase().endsWith('.csv');
+            
+            if (isCSV) {
+                Papa.parse(bulkFile, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: async (results) => {
+                        await processJsonData(results.data);
+                    },
+                    error: (error) => {
+                        console.error('PapaParse error:', error);
+                        setStatus({ type: 'error', message: `File parsing error: ${error.message}` });
+                        setUploading(false);
+                    }
+                });
+            } else {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const data = new Uint8Array(e.target?.result as ArrayBuffer);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet) as any[];
+                    await processJsonData(jsonData);
+                };
+                reader.readAsArrayBuffer(bulkFile);
+            }
 
+            async function processJsonData(jsonData: any[]) {
                 setBulkProgress({ current: 0, total: jsonData.length });
                 let successCount = 0;
                 let failCount = 0;
+                const errors: string[] = [];
 
                 for (let i = 0; i < jsonData.length; i++) {
                     const row = jsonData[i];
                     try {
-                        const wardArea = row['Ward Area'] || '';
-                        const routeId = row['Route ID'] || '';
-                        const routeName = row['Route Name'] || row['Route ID'] || `Route ${i + 1}`;
-                        const kmlContent = row['KML Content'] || '';
+                        // Flexible header mapping
+                        const wardArea = row['Ward Area'] || row['ward_area'] || row['Ward'] || '';
+                        const routeId = row['Route ID'] || row['route_id'] || row['id'] || '';
+                        const routeName = row['Route Name'] || row['route_name'] || row['name'] || row['Route ID'] || `Route ${i + 1}`;
+                        const kmlContent = row['KML Content'] || row['kml_content'] || row['kml'] || '';
 
                         if (!kmlContent) {
+                            console.warn(`Row ${i} missing KML Content`, row);
                             failCount++;
                             continue;
                         }
@@ -386,33 +413,47 @@ const RouteMasterPage = () => {
                         // Parse KML to GeoJSON
                         const parser = new DOMParser();
                         const kmlDoc = parser.parseFromString(kmlContent, 'text/xml');
+                        
+                        // Check for XML parsing errors
+                        if (kmlDoc.getElementsByTagName('parsererror').length > 0) {
+                            throw new Error('Invalid KML XML format');
+                        }
+
                         const geojsonData = toGeoJSON.kml(kmlDoc);
+
+                        if (!geojsonData || !geojsonData.features || geojsonData.features.length === 0) {
+                            throw new Error('No features found in KML');
+                        }
 
                         // Calculate stats
                         let totalPoints = 0;
-                        if (geojsonData.features) {
-                            geojsonData.features.forEach((f: any) => {
-                                totalPoints += countCoordinates(f.geometry);
-                            });
-                        }
+                        geojsonData.features.forEach((f: any) => {
+                            totalPoints += countCoordinates(f.geometry);
+                        });
 
                         const routeData = {
                             name: routeName,
                             routeId: routeId,
                             zone: zoneName,
                             ward: wardArea,
-                            featureCount: geojsonData.features?.length || 0,
+                            featureCount: geojsonData.features.length,
                             pointCount: totalPoints,
                             data: JSON.stringify(geojsonData),
                             createdAt: new Date().toISOString()
                         };
 
                         const result = await createLargeDocument('ward_routes', routeData, 'data');
-                        if (result.success) successCount++;
-                        else failCount++;
+                        if (result.success) {
+                            successCount++;
+                        } else {
+                            console.error(`Failed to save row ${i}:`, result.error);
+                            errors.push(`Row ${i}: ${result.error}`);
+                            failCount++;
+                        }
 
-                    } catch (err) {
+                    } catch (err: any) {
                         console.error(`Error processing row ${i}:`, err);
+                        errors.push(`Row ${i}: ${err.message}`);
                         failCount++;
                     }
                     setBulkProgress({ current: i + 1, total: jsonData.length });
@@ -420,13 +461,17 @@ const RouteMasterPage = () => {
 
                 setStatus({ 
                     type: successCount > 0 ? 'success' : 'error', 
-                    message: `Bulk import complete! Successfully imported ${successCount} routes. ${failCount} failed.` 
+                    message: `Bulk import complete! Successfully imported ${successCount} routes. ${failCount} failed.${errors.length > 0 ? ' Check console for details.' : ''}` 
                 });
+                
+                if (errors.length > 0) {
+                    console.error('Bulk Import Errors:', errors);
+                }
+
                 setUploading(false);
                 setBulkFile(null);
                 fetchData();
-            };
-            reader.readAsArrayBuffer(bulkFile);
+            }
         } catch (error: any) {
             setStatus({ type: 'error', message: error.message });
             setUploading(false);
@@ -825,6 +870,14 @@ const RouteMasterPage = () => {
                                     <RefreshCw size={14} className={isRepairing ? "animate-spin" : ""} />
                                     {isRepairing ? "Fixing..." : "Repair Zones"}
                                 </button>
+                                <button
+                                    onClick={() => navigate('/bulk-vehicle-upload')}
+                                    title="Bulk Vehicle Assignment"
+                                    className="p-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20 flex items-center gap-2 px-3 text-[10px] font-black uppercase"
+                                >
+                                    <Truck size={14} />
+                                    Vehicle Assignment
+                                </button>
                                 <button onClick={fetchData} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-gray-400">
                                     <RefreshCw size={20} />
                                 </button>
@@ -837,6 +890,7 @@ const RouteMasterPage = () => {
                                     <tr>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Route Name</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Zone / Ward</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Vehicles</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Analytics</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
                                     </tr>
@@ -883,6 +937,32 @@ const RouteMasterPage = () => {
                                                             </span>
                                                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{route.ward}</span>
                                                         </div>
+                                                    </td>
+                                                    <td className="px-8 py-5">
+                                                        {(() => {
+                                                            const assignedVehicles = allVehicles.filter(v => {
+                                                                const routeStr = v.allAssignedRoutes || v.assignedRouteId || '';
+                                                                if (!routeStr) return false;
+                                                                const routes = routeStr.toString().split(/[;,]/).map((r: string) => r.trim());
+                                                                return routes.includes(route.routeId || '');
+                                                            });
+                                                            
+                                                            if (assignedVehicles.length === 0) return <span className="text-[10px] text-gray-400 font-bold uppercase italic">No Vehicles</span>;
+                                                            
+                                                            return (
+                                                                <div className="flex flex-col gap-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="px-2 py-0.5 bg-orange-500 text-white text-[10px] font-black rounded-full shadow-sm shadow-orange-500/20">
+                                                                            {assignedVehicles.length}
+                                                                        </span>
+                                                                        <span className="text-[10px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-widest">Linked</span>
+                                                                    </div>
+                                                                    <p className="text-[10px] font-bold text-gray-400 truncate max-w-[150px]" title={assignedVehicles.map(v => v.plateNumber || v.name).join(', ')}>
+                                                                        {assignedVehicles.map(v => v.plateNumber || v.name).join(', ')}
+                                                                    </p>
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </td>
                                                     <td className="px-8 py-5">
                                                         <div className="flex flex-col gap-1">
