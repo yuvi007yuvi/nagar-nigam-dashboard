@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Wallet, Fuel, Scale,
   Trash2, Map, CalendarCheck, AlertCircle,
   Settings, BarChart3, X, ChevronRight, RefreshCw, User,
-  LogOut, HelpCircle, Shield, Home, History, Navigation, PlusSquare, FileText, Upload
+  LogOut, HelpCircle, Shield, Home, History, Navigation, PlusSquare, FileText, Upload, Wrench
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAllowedModules } from '../services/userRoleService';
@@ -99,6 +99,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, setIsCollapsed, 
         { name: 'Bulk Collection', icon: Trash2, path: '/bulk-collection' },
         { name: 'Attendance', icon: CalendarCheck, path: '/attendance' },
         { name: 'Complaint', icon: AlertCircle, path: '/complaint' },
+      ]
+    },
+    {
+      title: 'Maintenance',
+      icon: Wrench,
+      items: [
+        { name: 'Maintenance ERP', icon: Settings, path: '/maintenance-erp' },
       ]
     },
     {
@@ -215,7 +222,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, setIsCollapsed, 
         {menuGroups.map((group) => {
           const groupItems = group.items.filter(item => 
             allowedModules.map(m => m.trim().toLowerCase()).includes(item.name.trim().toLowerCase()) ||
-            item.name === 'Admin Console' || item.name === 'Profile' || item.name === 'Coverage Re-run' // Always allow if not specifically restricted
+            item.name === 'Admin Console' || item.name === 'Profile' || item.name === 'Coverage Re-run' || item.name === 'Maintenance ERP' // Always allow if not specifically restricted
           );
 
           if (groupItems.length === 0) return null;

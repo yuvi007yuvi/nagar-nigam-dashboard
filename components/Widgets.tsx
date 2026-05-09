@@ -197,7 +197,7 @@ export const ComplaintChart: React.FC<{ data?: any[] }> = React.memo(({ data = [
 
           <div className="flex items-center w-full gap-4">
             {/* Chart Container */}
-            <div className="relative w-[140px] h-[140px] flex-shrink-0" style={{ minHeight: '140px' }}>
+            <div className="relative w-[140px] h-[140px] flex-shrink-0" style={{ minHeight: '140px', minWidth: '140px' }}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={140}>
                 <PieChart>
                   <Pie
@@ -272,7 +272,7 @@ export const BulkCollectionChart: React.FC<{ data?: { segments: any[] } }> = Rea
 
           <div className="flex items-center w-full gap-4">
             {/* Donut Chart */}
-            <div className="relative w-[130px] h-[130px] flex-shrink-0" style={{ minHeight: '130px' }}>
+            <div className="relative w-[130px] h-[130px] flex-shrink-0" style={{ minHeight: '130px', minWidth: '130px' }}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={130}>
                 <PieChart>
                   <Pie
@@ -413,7 +413,7 @@ export const CustomerChart: React.FC<{ data?: any[] }> = React.memo(({ data = []
 
           <div className="flex items-center w-full gap-4">
             {/* Chart Container */}
-            <div className="relative w-[130px] h-[130px] flex-shrink-0" style={{ minHeight: '130px' }}>
+            <div className="relative w-[130px] h-[130px] flex-shrink-0" style={{ minHeight: '130px', minWidth: '130px' }}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={130}>
                 <PieChart>
                   <Pie

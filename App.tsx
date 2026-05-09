@@ -50,6 +50,7 @@ const RouteVisualizationPage = lazy(() => import('./components/pages/RouteVisual
 const RouteAuditReportPage = lazy(() => import('./components/pages/RouteAuditReportPage'));
 const CoverageReRunPage = lazy(() => import('./components/pages/CoverageReRunPage'));
 const BulkVehicleUploadPage = lazy(() => import('./components/pages/BulkVehicleUploadPage'));
+const MaintenanceDashboard = lazy(() => import('./components/pages/maintenance/MaintenanceDashboard'));
 
 
 function App() {
@@ -280,6 +281,11 @@ function App() {
                 <Route path="/bulk-vehicle-upload" element={
                   <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
                     <BulkVehicleUploadPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/maintenance-erp" element={
+                  <ProtectedRoute userId={user?.uid || ''} requiredModule="Admin">
+                    <MaintenanceDashboard />
                   </ProtectedRoute>
                 } />
 

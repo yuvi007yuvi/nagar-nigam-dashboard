@@ -25,12 +25,13 @@ export const ALL_MODULES = [
   'Settings',
   'Vehicle History',
   'Vehicle Master',
-  'Parking & Dump'
+  'Parking & Dump',
+  'Maintenance ERP'
 ];
 
 // Default permissions for roles
 const DEFAULT_ROLE_PERMISSIONS = {
-  'admin': [...ALL_MODULES, 'Profile'],
+  'admin': [...ALL_MODULES, 'Profile', 'Maintenance ERP'],
   'basic_user': ['Complaint', 'Profile', 'POI Monitoring']
 };
 
@@ -152,11 +153,12 @@ export const initializeDefaultRoles = async () => {
       );
       console.log('Initialized Admin role');
     } else {
-      // Check if Settings, Vehicle History or Vehicle Master is missing from Admin role and update if needed
+      // Check if Settings, Vehicle History, Vehicle Master or Maintenance ERP is missing from Admin role and update if needed
       const adminData = adminSnap.data() as Role;
       if (!adminData.modules.includes('Settings') || 
           !adminData.modules.includes('Vehicle History') || 
-          !adminData.modules.includes('Vehicle Master')) {
+          !adminData.modules.includes('Vehicle Master') ||
+          !adminData.modules.includes('Maintenance ERP')) {
         await updateRole(
           ROLES.ADMIN,
           'Administrator',
