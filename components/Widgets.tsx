@@ -264,7 +264,7 @@ export const BulkCollectionChart: React.FC<{ data?: { segments: any[] } }> = Rea
         Bulk Collection
       </h3>
 
-      {total > 0 ? (
+      {segments.length > 0 ? (
         <div className="flex-1 flex items-center relative z-10 min-h-0">
           <div className="absolute -top-6 -right-6 opacity-5 pointer-events-none">
             <BinIllustration className="w-40 h-40" />
@@ -321,7 +321,7 @@ export const BulkCollectionChart: React.FC<{ data?: { segments: any[] } }> = Rea
           </div>
         </div>
       ) : (
-        <EmptyState illustration={BinIllustration} message="No bulk collection data" />
+        <EmptyState illustration={BinIllustration} message="No bulk collection data available" />
       )}
     </WidgetContainer>
   );

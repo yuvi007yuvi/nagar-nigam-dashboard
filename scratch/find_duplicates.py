@@ -8,12 +8,20 @@ output_file = r'C:\Users\yuvra\AppData\Local\Temp\nnmv-dashboard-vehicles.json'
 # Actually I'll just read the file I viewed earlier
 # The path was C:\Users\yuvra\.gemini\antigravity\brain\1953e74c-6edb-40b9-95ce-f05cc1464acf\.system_generated\steps\18\output.txt
 
-path = r'C:\Users\yuvra\.gemini\antigravity\brain\1953e74c-6edb-40b9-95ce-f05cc1464acf\.system_generated\steps\18\output.txt'
 
-with open(path, 'r', encoding='utf-8') as f:
-    data = json.load(f)
+paths = [
+    r'C:\Users\yuvra\.gemini\antigravity\brain\1953e74c-6edb-40b9-95ce-f05cc1464acf\.system_generated\steps\18\output.txt',
+    r'C:\Users\yuvra\.gemini\antigravity\brain\1953e74c-6edb-40b9-95ce-f05cc1464acf\.system_generated\steps\90\output.txt',
+    r'C:\Users\yuvra\.gemini\antigravity\brain\1953e74c-6edb-40b9-95ce-f05cc1464acf\.system_generated\steps\111\output.txt'
+]
 
-vehicles = data.get('documents', [])
+vehicles = []
+for path in paths:
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            vehicles.extend(data.get('documents', []))
+
 
 seen_plates = {} # plate -> [doc_names]
 seen_names = {} # name -> [doc_names]

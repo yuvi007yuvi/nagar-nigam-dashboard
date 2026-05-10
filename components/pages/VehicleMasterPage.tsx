@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, Plus, Search, Edit2, Trash2, X, Check, Filter, Info, Smartphone, User, MapPin, LayoutGrid, List, Download, Upload } from 'lucide-react';
+import { Truck, Plus, Search, Edit2, Trash2, X, Check, Filter, Info, Smartphone, User, MapPin, LayoutGrid, List, Download, Upload, CopyCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../shared/PageHeader';
 import { createAdminData, getAllAdminData, updateAdminData, deleteAdminData } from '../../services/databaseService';
@@ -33,6 +33,9 @@ const VehicleMasterPage = () => {
     const [showUnknownModal, setShowUnknownModal] = useState(false);
     const [isAddingAll, setIsAddingAll] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+    const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
+    const [duplicateGroups, setDuplicateGroups] = useState<{ type: string, value: string, items: Vehicle[] }[]>([]);
+    const [isCleaningUp, setIsCleaningUp] = useState(false);
     const navigate = useNavigate();
     const { zones: dynamicZones, wards: dynamicWards } = useData();
 
@@ -195,6 +198,90 @@ const VehicleMasterPage = () => {
         }
         setIsAddingAll(false);
     };
+    const handleFindDuplicates = () => {
+        const imeiGroups: { [key: string]: Vehicle[] } = {};
+        const plateGroups: { [key: string]: Vehicle[] } = {};
+        const nameGroups: { [key: string]: Vehicle[] } = {};
+
+        vehicles.forEach(v => {
+            if (v.imei) {
+                const key = v.imei.trim();
+                if (!imeiGroups[key]) imeiGroups[key] = [];
+                imeiGroups[key].push(v);
+            }
+            if (v.plateNumber && v.plateNumber.trim() && v.plateNumber !== 'N/A') {
+                const key = v.plateNumber.trim().toUpperCase();
+                if (!plateGroups[key]) plateGroups[key] = [];
+                plateGroups[key].push(v);
+            }
+            if (v.name && v.name.trim()) {
+                const key = v.name.trim().toUpperCase();
+                if (!nameGroups[key]) nameGroups[key] = [];
+                nameGroups[key].push(v);
+            }
+        });
+
+        const groups: { type: string, value: string, items: Vehicle[] }[] = [];
+        
+        // Helper to avoid redundant groups if they contain the same set of IDs
+        const seenDocIdSets = new Set<string>();
+
+        const addGroup = (type: string, value: string, items: Vehicle[]) => {
+            if (items.length > 1) {
+                // Sort items to keep the "best" one at index 0
+                // Criteria: has IMEI, then has more fields filled
+                const sortedItems = [...items].sort((a, b) => {
+                    if (a.imei && !b.imei) return -1;
+                    if (!a.imei && b.imei) return 1;
+                    
+                    // Count non-empty fields for secondary sorting
+                    const aCount = Object.values(a).filter(v => v !== null && v !== undefined && v !== '').length;
+                    const bCount = Object.values(b).filter(v => v !== null && v !== undefined && v !== '').length;
+                    
+                    return bCount - aCount;
+                });
+
+                const idSet = sortedItems.map(i => i.id).sort().join(',');
+                if (!seenDocIdSets.has(idSet)) {
+                    groups.push({ type, value, items: sortedItems });
+                    seenDocIdSets.add(idSet);
+                }
+            }
+        };
+
+        Object.entries(imeiGroups).forEach(([val, items]) => addGroup('IMEI', val, items));
+        Object.entries(plateGroups).forEach(([val, items]) => addGroup('Plate', val, items));
+        Object.entries(nameGroups).forEach(([val, items]) => addGroup('Name', val, items));
+
+        setDuplicateGroups(groups);
+        setShowDuplicatesModal(true);
+    };
+
+    const handleRemoveDuplicates = async (groupIdxs: number[]) => {
+        if (!window.confirm(`Are you sure you want to remove duplicates from ${groupIdxs.length} groups? This will keep one vehicle per group and delete the rest.`)) return;
+        
+        setIsCleaningUp(true);
+        try {
+            const toDelete = new Set<string>();
+            groupIdxs.forEach(idx => {
+                const group = duplicateGroups[idx];
+                // Keep the first one, delete others
+                group.items.slice(1).forEach(item => toDelete.add(item.id));
+            });
+
+            for (const id of Array.from(toDelete)) {
+                await deleteAdminData('vehicles', id);
+            }
+            
+            await fetchVehicles();
+            setShowDuplicatesModal(false);
+            alert(`Successfully removed ${toDelete.size} duplicate documents.`);
+        } catch (error) {
+            console.error('Error cleaning duplicates:', error);
+            alert('Failed to remove some duplicates.');
+        }
+        setIsCleaningUp(false);
+    };
 
     const handleExportCSV = () => {
         const headers = ['S.No', 'Vehicle Name', 'Type', 'IMEI', 'Plate Number', 'Driver', 'Phone', 'Zone', 'Ward', 'Status'];
@@ -284,6 +371,14 @@ const VehicleMasterPage = () => {
                     >
                         <Upload size={18} />
                         Bulk Assign
+                    </button>
+                    <button
+                        onClick={handleFindDuplicates}
+                        className="flex-1 md:flex-none px-4 py-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-xl font-bold transition-all flex items-center justify-center gap-2 border border-red-100 dark:border-red-500/20 hover:bg-red-100"
+                        title="Check for duplicate entries"
+                    >
+                        <CopyCheck size={18} />
+                        Duplicates
                     </button>
                     <button
                         onClick={() => handleOpenModal()}
@@ -579,7 +674,120 @@ const VehicleMasterPage = () => {
                 )}
             </AnimatePresence>
 
+            {/* Duplicates Modal */}
+            <AnimatePresence>
+                {showDuplicatesModal && (
+                    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-4xl max-h-[85vh] overflow-hidden shadow-2xl flex flex-col"
+                        >
+                            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-red-600 text-white">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                                        <CopyCheck size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold">Duplicate Analysis</h3>
+                                        <p className="text-xs text-white/80">Found {duplicateGroups.length} groups of potential duplicates</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowDuplicatesModal(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 overflow-y-auto flex-1 bg-gray-50/50 dark:bg-gray-900/50">
+                                {duplicateGroups.length === 0 ? (
+                                    <div className="py-20 text-center">
+                                        <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Check size={40} />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-gray-800 dark:text-white">No Duplicates Found</h3>
+                                        <p className="text-gray-400">Your vehicle master list is clean!</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 p-4 rounded-2xl flex gap-3 items-start">
+                                            <Info className="text-amber-600 shrink-0 mt-0.5" size={18} />
+                                            <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                                                The following vehicles share the same IMEI, Plate Number, or Name. 
+                                                Cleaning up will <strong>keep the first record</strong> in each group and permanently delete the others.
+                                            </p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {duplicateGroups.map((group, gIdx) => (
+                                                <div key={gIdx} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                                                    <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                                            Matching {group.type}: <span className="text-red-500">{group.value}</span>
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                                                            {group.items.length} Entries
+                                                        </span>
+                                                    </div>
+                                                    <div className="divide-y divide-gray-50 dark:divide-gray-700">
+                                                        {group.items.map((item, iIdx) => (
+                                                            <div key={item.id} className={`p-4 flex items-center justify-between ${iIdx === 0 ? 'bg-emerald-50/30 dark:bg-emerald-500/5' : ''}`}>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iIdx === 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
+                                                                        {iIdx === 0 ? <Check size={16} /> : <Trash2 size={16} />}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm font-bold text-gray-700 dark:text-gray-200">{item.name}</p>
+                                                                        <p className="text-[10px] text-gray-400">{item.type} • {item.zone} • {item.ward}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    {iIdx === 0 ? (
+                                                                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Keeping</span>
+                                                                    ) : (
+                                                                        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">Redundant</span>
+                                                                    )}
+                                                                    <p className="text-[9px] text-gray-300 font-mono mt-1">{item.id}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-6 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800">
+                                <button
+                                    onClick={() => setShowDuplicatesModal(false)}
+                                    className="px-6 py-2 text-sm font-bold text-gray-500 hover:text-gray-700"
+                                >
+                                    Cancel
+                                </button>
+                                {duplicateGroups.length > 0 && (
+                                    <button
+                                        onClick={() => handleRemoveDuplicates(duplicateGroups.map((_, i) => i))}
+                                        disabled={isCleaningUp}
+                                        className="px-8 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all flex items-center gap-2 shadow-lg shadow-red-600/20 disabled:opacity-50"
+                                    >
+                                        {isCleaningUp ? (
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        ) : (
+                                            <Trash2 size={20} />
+                                        )}
+                                        Remove All Duplicates
+                                    </button>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             {/* Modal */}
+
             <AnimatePresence>
                 {showModal && (
                     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">

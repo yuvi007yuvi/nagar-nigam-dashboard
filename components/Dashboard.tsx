@@ -279,20 +279,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
     const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    let today = 0, yesterday = 0, tillMonth = 0, prevMonth = 0;
+    let today = 0, yesterday = 0, tillMonth = 0, prevMonth = 0, earlier = 0;
 
     bulkCollections.forEach((r: any) => {
       const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+      if (isNaN(d.getTime())) return; // Skip invalid dates
+
       if (d >= todayStart) {
         today++;
       } else if (d >= yesterdayStart && d < todayStart) {
         yesterday++;
+      } else if (d >= thisMonthStart) {
+        // This case is covered by today/yesterday usually, but for completeness
+        tillMonth++;
+      } else if (d >= prevMonthStart && d <= prevMonthEnd) {
+        prevMonth++;
+      } else {
+        earlier++;
       }
+
+      // Also count toward tillMonth if it's in this month
       if (d >= thisMonthStart) {
         tillMonth++;
-      }
-      if (d >= prevMonthStart && d <= prevMonthEnd) {
-        prevMonth++;
       }
     });
 
@@ -301,7 +309,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
       { name: 'Yesterday', value: yesterday, color: '#f43f5e' },
       { name: 'Till Month', value: tillMonth, color: '#10b981' },
       { name: 'Previous Month', value: prevMonth, color: '#22c55e' },
-    ];
+      { name: 'Earlier', value: earlier, color: '#64748b' },
+    ].filter(s => s.value > 0 || ['Today', 'Till Month'].includes(s.name)); // Keep key segments even if 0
 
     return { segments };
   }, [bulkCollections]);
