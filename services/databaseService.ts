@@ -265,6 +265,19 @@ export const getAllCoverageRecords = () => getAllDocuments('coverageRecords');
 export const getCoverageRecordById = (id: string) => getDocumentById('coverageRecords', id);
 export const updateCoverageRecord = (id: string, data: any) => updateDocument('coverageRecords', id, data);
 export const deleteCoverageRecord = (id: string) => deleteDocument('coverageRecords', id);
+export const getCoverageByDate = async (dateStr: string) => {
+  try {
+    const q = query(collection(db, 'coverageRecords'), where('sourceDate', '==', dateStr));
+    const querySnapshot = await getDocs(q);
+    const documents: any[] = [];
+    querySnapshot.forEach((doc) => {
+      documents.push({ id: doc.id, ...doc.data() });
+    });
+    return { success: true, data: documents };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
 
 // Attendance
 export const createAttendanceRecord = (attendanceData: any) => createDocument('attendanceRecords', attendanceData);

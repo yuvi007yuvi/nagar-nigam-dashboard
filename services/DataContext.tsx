@@ -11,7 +11,8 @@ import {
   getAllAdminData,
   getCustomersByUser,
   getUserChargesByUser,
-  getRecentDocuments
+  getRecentDocuments,
+  getCoverageByDate
 } from './databaseService';
 
 // Define types for our data
@@ -82,7 +83,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode; userId?: string
         { fn: getAllWeighments, setter: setWeighments },
         { fn: () => getRecentDocuments('bulkCollections', 2000), setter: setBulkCollections },
         { fn: () => getAllAdminData('bulk_collection_sites'), setter: setBulkCollectionSites },
-        { fn: () => getRecentDocuments('coverageRecords', 2000), setter: setCoverageRecords },
+        { fn: () => getCoverageByDate(new Date().toISOString().split('T')[0]), setter: setCoverageRecords },
         { fn: getAllAttendanceRecords, setter: setAttendanceRecords },
         { fn: getAllComplaints, setter: setComplaints },
         { fn: () => getAllAdminData('zones'), setter: setZones },

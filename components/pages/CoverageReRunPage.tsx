@@ -135,7 +135,7 @@ const CoverageReRunPage = () => {
 
             // 3. Proximity Analysis
             let coveredCount = 0;
-            const thresholdMeters = 50; 
+            const thresholdMeters = 15; // Tightened from 50m to 15m for precision
             const batch = writeBatch(db);
             let batchCount = 0;
 

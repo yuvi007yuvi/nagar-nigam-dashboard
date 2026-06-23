@@ -7,7 +7,7 @@ import {
     User, Calendar, Clock, Download as DownloadIcon, RefreshCw, Layers,
     ChevronDown, ChevronRight, MoreHorizontal, FileText, ArrowRight,
     Target, Activity, Navigation, Smartphone, X, Search as SearchIcon,
-    Map as MapIcon, List, PieChart
+    Map as MapIcon, List, PieChart, AlertCircle
 } from 'lucide-react';
 import PageHeader from '../shared/PageHeader';
 import KMLLayers from '../shared/KMLLayers';
@@ -186,19 +186,13 @@ const POIMonitoringPage = () => {
         endDate: new Date().toISOString().split('T')[0]
     });
     const [isStale, setIsStale] = useState(false);
+    const [playbackTarget, setPlaybackTarget] = useState<{ward: string, zone: string, route: string, date: string} | null>(null);
 
     useEffect(() => {
         const auth = getAuth();
         if (auth.currentUser) {
             setUserName(auth.currentUser.displayName || auth.currentUser.email?.split('@')[0] || 'Administrator');
         }
-        
-        // Load initial global stats
-        const loadInitialStats = async () => {
-            const res = await getCoverageStats();
-            if (res.success) setStats(res.data);
-        };
-        loadInitialStats();
     }, []);
 
     const getGreeting = () => {
@@ -238,18 +232,28 @@ const POIMonitoringPage = () => {
 
             let data: any[] = [];
             
-            // Build covered set from coverageRecords
+            // Build covered set from coverageRecords or historical records
             const [year, month, day] = reportFilters.startDate.split('-').map(Number);
             const targetDate = new Date(year, month - 1, day);
             const targetDateStr = targetDate.toDateString();
+            const todayStr = new Date().toISOString().split('T')[0];
 
-            const coveredCustomerIds = new Set(
-                coverageRecords.filter(r => {
-                    const rDate = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
-                    // Match the report date
-                    return rDate.toDateString() === targetDateStr || r.sourceDate === reportFilters.startDate;
-                }).map(r => r.customerId)
-            );
+            let activeCoverageRecords = coverageRecords;
+            if (reportFilters.startDate !== todayStr) {
+                const { getCoverageByDate } = await import('../../services/databaseService');
+                const res = await getCoverageByDate(reportFilters.startDate);
+                if (res.success && res.data) {
+                    activeCoverageRecords = res.data;
+                }
+            }
+
+            const coveredCustomerVehicleMap = new Map<string, string>();
+            activeCoverageRecords.forEach((r: any) => {
+                const rDate = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+                if (rDate.toDateString() === targetDateStr || r.sourceDate === reportFilters.startDate) {
+                    coveredCustomerVehicleMap.set(r.customerId, r.vehicleId || r.imei || 'Unknown Vehicle');
+                }
+            });
 
             if (reportType === 'POI Report' || reportType === 'Coverage Overview') {
                 // Group POIs by Route for a summarized report
@@ -259,7 +263,7 @@ const POIMonitoringPage = () => {
                     const rId = p.routeId || 'Unassigned';
                     if (!routeGroups[rId]) {
                         // Find ALL vehicles assigned to this route
-                        const assignedVehicles = allVehicles.filter(v => {
+                        const assignedVehicles = (allVehicles || []).filter(v => {
                             const routeStr = v.allAssignedRoutes || v.assignedRouteId || '';
                             if (!routeStr) return false;
                             const routes = routeStr.toString().split(/[;,]/).map((r: string) => r.trim());
@@ -286,10 +290,15 @@ const POIMonitoringPage = () => {
                         };
                     }
                     routeGroups[rId].total++;
-                    const isCovered = coveredCustomerIds.has(p.customerId || p.id);
+                    const isCovered = coveredCustomerVehicleMap.has(p.customerId || p.id);
                     
                     if (isCovered) {
                         routeGroups[rId].covered++;
+                        const actualVehicleId = coveredCustomerVehicleMap.get(p.customerId || p.id);
+                        if (actualVehicleId) {
+                            if (!routeGroups[rId].actualVehicles) routeGroups[rId].actualVehicles = new Set<string>();
+                            routeGroups[rId].actualVehicles.add(actualVehicleId === 'MN-RE-RUN' ? 'Manual Re-Run' : actualVehicleId);
+                        }
                     } else {
                         routeGroups[rId].pending++;
                     }
@@ -299,12 +308,18 @@ const POIMonitoringPage = () => {
                     }
                 });
 
-                data = Object.values(routeGroups).map((group: any, i) => ({
-                    sno: i + 1,
-                    zone: group.zone,
-                    ward: group.ward,
-                    vehicle: group.vehicle,
-                    vtype: group.vtype,
+                data = Object.values(routeGroups).map((group: any, i) => {
+                    let finalVehicle = group.vehicle;
+                    if (finalVehicle === 'N/A' && group.actualVehicles && group.actualVehicles.size > 0) {
+                        finalVehicle = Array.from(group.actualVehicles).join(', ');
+                    }
+
+                    return {
+                        sno: i + 1,
+                        zone: group.zone,
+                        ward: group.ward,
+                        vehicle: finalVehicle,
+                        vtype: group.vtype,
                     route: group.route,
                     total: group.total,
                     covered: group.covered,
@@ -313,7 +328,8 @@ const POIMonitoringPage = () => {
                     date: reportFilters.startDate,
                     inTime: group.covered > 0 ? (group.lastVisited || '08:30 AM') : 'N/A',
                     outTime: group.covered > 0 ? '02:00 PM' : '-'
-                }));
+                    };
+                });
             } else if (reportType === 'Trip Report' || reportType === 'Distance Report') {
                 // Generate per-vehicle summary
                 const vehicles = Array.from(new Set(filteredSource.map(p => p.vehicleId).filter(v => v && v !== 'N/A')));
@@ -321,7 +337,7 @@ const POIMonitoringPage = () => {
 
                 data = vehicles.map((v, i) => {
                     const vehiclePois = filteredSource.filter(p => p.vehicleId === v);
-                    const covered = vehiclePois.filter(p => coveredCustomerIds.has(p.customerId || p.id)).length;
+                    const covered = vehiclePois.filter(p => coveredCustomerVehicleMap.has(p.customerId || p.id)).length;
                     const total = vehiclePois.length;
                     const perc = total > 0 ? Math.round((covered / total) * 100) : 0;
 
@@ -337,8 +353,8 @@ const POIMonitoringPage = () => {
                         pending: reportType === 'Distance Report' ? '0.6 km' : (total - covered),
                         coverage: `${perc}%`,
                         date: reportFilters.startDate,
-                        inTime: '08:00 AM',
-                        outTime: '02:00 PM'
+                        inTime: '08:30 AM', // TODO: Calculate from actual records
+                        outTime: '02:00 PM' // TODO: Calculate from actual records
                     };
                 });
             }
@@ -355,6 +371,7 @@ const POIMonitoringPage = () => {
     const handlePlayback = async (row: any) => {
         setShowReport(false);
         setLoading(true);
+        setViewMode('map'); // Force view to map
         
         if (row.ward && row.ward !== 'N/A') setSelectedWard(row.ward);
         if (row.zone && row.zone !== 'N/A') setSelectedZone(row.zone);
@@ -362,6 +379,13 @@ const POIMonitoringPage = () => {
         
         // Update the main view date to match the report date
         setSelectedDate(reportFilters.startDate);
+
+        setPlaybackTarget({
+            ward: row.ward !== 'N/A' ? row.ward : '',
+            zone: row.zone !== 'N/A' ? row.zone : '',
+            route: row.route !== 'Unassigned' ? row.route : '',
+            date: reportFilters.startDate
+        });
     };
     const [routePath, setRoutePath] = useState<any>(null);
     const [wardRoads, setWardRoads] = useState<any[]>([]);
@@ -377,27 +401,27 @@ const POIMonitoringPage = () => {
                 const result = await getWardRoutes(selectedWard);
                 if (result.success && 'data' in result) {
                     setAvailableRoutes(result.data as any[]);
-                    setSelectedRoute('All');
                 }
             } else {
                 setAvailableRoutes([]);
-                setSelectedRoute('All');
             }
         };
         fetchRoutes();
     }, [selectedWard]);
 
     useEffect(() => {
-        setIsStale(true);
         fetchData();
     }, [selectedWard, selectedZone, selectedRoute]);
 
     const fetchData = async () => {
+        // Explicitly clear POIs and Route when filters change BEFORE async operations
+        setPois([]);
+        setRoutePath(null);
+        setAssignedVehicle(null);
+        setHistoryData([]);
         setLoading(true);
+
         try {
-            // We no longer load stats automatically to prevent premature updates
-            // Stats will only be fetched when "Load" buttons are clicked
-            
             // Load roads as background but clear operational data
             if (selectedWard !== 'All' && selectedWard !== '') {
                 const roadsResult = await getWardRoads(selectedWard);
@@ -407,12 +431,6 @@ const POIMonitoringPage = () => {
             } else {
                 setWardRoads([]);
             }
-
-            // Explicitly clear POIs and Route when filters change
-            setPois([]);
-            setRoutePath(null);
-            setAssignedVehicle(null);
-            setHistoryData([]);
         } catch (error) {
             console.error('Error fetching POI data:', error);
         } finally {
@@ -420,39 +438,29 @@ const POIMonitoringPage = () => {
         }
     };
 
-    const handleLoadCustomers = async () => {
-        if (selectedWard !== 'All' && selectedWard !== '') {
+    const handleLoadCustomers = async (overrideWard?: string, overrideZone?: string) => {
+        const w = typeof overrideWard === 'string' ? overrideWard : selectedWard;
+        const z = typeof overrideZone === 'string' ? overrideZone : selectedZone;
+        if (w !== 'All' && w !== '') {
             setLoading(true);
-            
-            // Fetch stats for the specific selection when loading customers
-            const statsResult = await getCoverageStats(selectedWard, selectedZone);
-            if (statsResult.success) {
-                setStats(statsResult.data);
-            }
 
-            const poiResult = await getPOIs(selectedWard === 'All' ? undefined : selectedWard, selectedZone === 'All' ? undefined : selectedZone);
+            const poiResult = await getPOIs(w === 'All' ? undefined : w, z === 'All' ? undefined : z);
             if (poiResult.success) {
                 setPois(poiResult.data || []);
             }
-            setIsStale(false);
             setLoading(false);
         }
     };
 
-    const handleLoadRoute = async () => {
-        if (selectedRoute !== 'All' && selectedRoute !== '') {
+    const handleLoadRoute = async (overrideRoute?: string, overrideDate?: string) => {
+        const r = typeof overrideRoute === 'string' ? overrideRoute : selectedRoute;
+        if (r !== 'All' && r !== '') {
             setLoading(true);
             setHistoryData([]); // Clear old history
-            
-            // Fetch stats for the specific selection when loading route
-            const statsResult = await getCoverageStats(selectedWard, selectedZone);
-            if (statsResult.success) {
-                setStats(statsResult.data);
-            }
 
             const { getAllAdminData } = await import('../../services/databaseService');
             const [routeResult, vehiclesResult] = await Promise.all([
-                getRouteData(selectedRoute),
+                getRouteData(r),
                 getAllAdminData('vehicles')
             ]);
 
@@ -461,7 +469,7 @@ const POIMonitoringPage = () => {
             }
 
             if (vehiclesResult.success) {
-                const vehicle = (vehiclesResult.data as any[]).find((v: any) => v.assignedRouteId === selectedRoute);
+                const vehicle = (vehiclesResult.data as any[]).find((v: any) => v.assignedRouteId === r);
                 setAssignedVehicle(vehicle || null);
 
                 // Fetch history if vehicle is assigned
@@ -470,7 +478,7 @@ const POIMonitoringPage = () => {
                         const { collection, query, where, getDocs, orderBy } = await import('firebase/firestore');
                         const { db } = await import('../../services/firebaseConfig');
                         
-                        const targetDay = selectedDate || new Date().toISOString().split('T')[0];
+                        const targetDay = typeof overrideDate === 'string' ? overrideDate : (selectedDate || new Date().toISOString().split('T')[0]);
                         const snapshotsCol = collection(db, 'vehicle_history_snapshots');
                         const q = query(
                             snapshotsCol,
@@ -495,15 +503,23 @@ const POIMonitoringPage = () => {
                 }
             }
             
-            setIsStale(false);
             setLoading(false);
         }
     };
 
+    useEffect(() => {
+        // Auto-load route and customers when playback target is ready
+        if (playbackTarget) {
+            handleLoadCustomers(playbackTarget.ward, playbackTarget.zone);
+            handleLoadRoute(playbackTarget.route, playbackTarget.date);
+            setPlaybackTarget(null);
+        }
+    }, [playbackTarget]);
+
     const filteredPOIs = pois.filter(poi =>
-        poi.ownerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        poi.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        poi.houseNumber.toLowerCase().includes(searchTerm.toLowerCase())
+        (poi.ownerName || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+        (poi.address || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+        (poi.houseNumber || '').toLowerCase().includes((searchTerm || '').toLowerCase())
     );
 
 
@@ -521,11 +537,41 @@ const POIMonitoringPage = () => {
         return { total, covered, percentage };
     }, [customers]);
 
+    const computedStats = useMemo(() => {
+        let filteredCustomers = customers;
+        if (selectedWard !== 'All' && selectedWard !== '') {
+            filteredCustomers = filteredCustomers.filter(c => c.ward === selectedWard);
+        }
+        if (selectedZone !== 'All' && selectedZone !== '') {
+            filteredCustomers = filteredCustomers.filter(c => c.zone === selectedZone);
+        }
+
+        const total = filteredCustomers.length;
+        
+        const todayStr = new Date().toDateString();
+        const coveredCustomerIds = new Set(
+            coverageRecords
+                .filter((r: any) => {
+                    const rDate = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+                    return rDate.toDateString() === todayStr;
+                })
+                .map((r: any) => r.customerId)
+        );
+
+        const covered = filteredCustomers.filter(c => coveredCustomerIds.has(c.id) || c.status === 'covered').length;
+        
+        return {
+            totalPOIs: total,
+            coveredToday: covered,
+            activeVehicles: (allVehicles || []).filter((v: any) => v.status === 'active').length
+        };
+    }, [customers, coverageRecords, selectedWard, selectedZone, allVehicles]);
+
     const summaryCards = [
-        { label: 'Total Households', value: isStale ? '---' : (stats?.totalPOIs || '0'), icon: POIIcon, color: 'text-blue-600 bg-blue-100' },
-        { label: 'Covered Today', value: isStale ? '---' : (stats?.coveredToday || '0'), icon: CheckCircle, color: 'text-green-600 bg-green-100' },
-        { label: 'Route Coverage', value: isStale ? '---' : `${routeAssignedStats.covered}/${routeAssignedStats.total} (${routeAssignedStats.percentage}%)`, icon: TrendingUp, color: 'text-emerald-600 bg-emerald-100' },
-        { label: 'Active Vehicles', value: isStale ? '---' : (assignedVehicle ? 1 : (stats?.activeVehicles || '0')), icon: Truck, color: 'text-purple-600 bg-purple-100' },
+        { label: 'Total Households', value: computedStats.totalPOIs || '0', icon: POIIcon, color: 'text-blue-600 bg-blue-100' },
+        { label: 'Covered Today', value: computedStats.coveredToday || '0', icon: CheckCircle, color: 'text-green-600 bg-green-100' },
+        { label: 'Route Coverage', value: `${routeAssignedStats.covered}/${routeAssignedStats.total} (${routeAssignedStats.percentage}%)`, icon: TrendingUp, color: 'text-emerald-600 bg-emerald-100' },
+        { label: 'Active Vehicles', value: assignedVehicle ? 1 : (computedStats.activeVehicles || '0'), icon: Truck, color: 'text-purple-600 bg-purple-100' },
     ];
 
     const StatCard = ({ label, value, icon: Icon, color, index }: any) => (
@@ -534,28 +580,23 @@ const POIMonitoringPage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             whileHover={{ y: -8, scale: 1.02 }}
-            className={`bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl p-6 rounded-[2rem] shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-700 relative overflow-hidden group ${isStale ? 'opacity-60' : ''}`}
+            className={`bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl p-6 rounded-[2rem] shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-700 relative overflow-hidden group`}
         >
-            {isStale && (
-                <div className="absolute inset-0 bg-white/10 dark:bg-gray-900/10 backdrop-blur-[1px] z-20 flex items-center justify-center">
-                    <RefreshCw className="animate-spin text-gray-300" size={24} />
-                </div>
-            )}
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-gray-50/50 to-white/50 dark:from-gray-700/30 dark:to-gray-800/30 opacity-40 rounded-bl-full -mr-6 -mt-6 group-hover:scale-110 transition-transform duration-500"></div>
 
             <div className="flex justify-between items-start relative z-10">
                 <div className={`p-4 rounded-2xl ${color} bg-opacity-20 shadow-inner group-hover:rotate-12 transition-transform duration-300`}>
                     <Icon size={28} className={color.split(' ')[0]} />
                 </div>
-                <div className={`flex items-center text-[10px] font-bold px-2 py-1 rounded-lg transition-colors ${isStale ? 'text-gray-400 bg-gray-100' : 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'}`}>
-                    {isStale ? 'Pending' : 'Live'}
+                <div className={`flex items-center text-[10px] font-bold px-2 py-1 rounded-lg transition-colors text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20`}>
+                    Live
                 </div>
             </div>
 
             <div className="mt-6 relative z-10">
                 <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">{label}</p>
                 <div className="flex items-baseline gap-1 mt-1">
-                    <h3 className={`text-4xl font-black font-display tracking-tight leading-none transition-all ${isStale ? 'text-gray-300' : 'text-gray-900 dark:text-white'}`}>
+                    <h3 className={`text-4xl font-black font-display tracking-tight leading-none transition-all text-gray-900 dark:text-white`}>
                         {value}
                     </h3>
                 </div>
@@ -595,6 +636,34 @@ const POIMonitoringPage = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Critical Missed POIs Alert Widget */}
+            {(computedStats.totalPOIs - computedStats.coveredToday) > 0 && (
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-3xl p-5 shadow-sm flex items-center justify-between"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-red-100 dark:bg-red-800/50 rounded-2xl text-red-500">
+                            <AlertCircle size={24} className="animate-pulse" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-black text-red-800 dark:text-red-400 uppercase tracking-tight">Critical Alert: Missed Scans</h3>
+                            <p className="text-xs font-bold text-red-600/80 dark:text-red-300/70 mt-0.5">
+                                There are <span className="text-red-600 font-black text-sm">{computedStats.totalPOIs - computedStats.coveredToday}</span> households currently pending coverage today.
+                            </p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => handleGenerateReport('POI Report')}
+                        disabled={dataLoading}
+                        className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-500/20 transition-all text-xs uppercase tracking-widest"
+                    >
+                        Review Pending
+                    </button>
+                </motion.div>
+            )}
 
             {/* Reports Control Center */}
             <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-md p-4 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm">
@@ -668,19 +737,23 @@ const POIMonitoringPage = () => {
                             onChange={(e) => {
                                 setSelectedZone(e.target.value);
                                 setSelectedWard('All');
+                                setSelectedRoute('All');
                             }}
                             className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-500 rounded-lg outline-none appearance-none"
                             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1em' }}
                         >
                             <option value="All">All Zones</option>
-                            {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
+                            {zones.map((z, idx) => <option key={z.id || `zone-${idx}`} value={z.name}>{z.name}</option>)}
                         </select>
                     </div>
 
                     <div className="w-48">
                         <select
                             value={selectedWard}
-                            onChange={(e) => setSelectedWard(e.target.value)}
+                            onChange={(e) => {
+                                setSelectedWard(e.target.value);
+                                setSelectedRoute('All');
+                            }}
                             className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-500 rounded-lg outline-none appearance-none"
                             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1em' }}
                             disabled={selectedZone === 'All'}
@@ -708,7 +781,7 @@ const POIMonitoringPage = () => {
                                         const numB = parseInt(b.displayName) || 0;
                                         return numA - numB;
                                     })
-                                    .map(w => <option key={w.id} value={w.name}>{w.displayName}</option>);
+                                    .map((w, idx) => <option key={w.id || `ward-${idx}`} value={w.name}>{w.displayName}</option>);
                             }, [wards, selectedZone])}
                         </select>
                     </div>
@@ -721,7 +794,7 @@ const POIMonitoringPage = () => {
                                 className="bg-transparent border-none outline-none text-[11px] w-full text-gray-500 font-bold cursor-pointer appearance-none"
                             >
                                 <option value="All">Routes {availableRoutes.length > 0 ? `(${availableRoutes.length})` : ''}</option>
-                                {availableRoutes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                {availableRoutes.map((r, idx) => <option key={r.id || `route-${idx}`} value={r.id}>{r.name}</option>)}
                             </select>
                         </div>
                     </div>
@@ -926,9 +999,9 @@ const POIMonitoringPage = () => {
                                     </Marker>
                                 )}
 
-                                {filteredPOIs.map(poi => (
+                                {filteredPOIs.map((poi, idx) => (
                                     <Marker
-                                        key={poi.id}
+                                        key={poi.id || `poi-${idx}`}
                                         position={[poi.lat, poi.lng]}
                                         icon={getPinIcon(poi.status === 'covered' ? '#10b981' : '#ef4444')}
                                     >
@@ -1029,8 +1102,8 @@ const POIMonitoringPage = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredPOIs.map(poi => (
-                                            <tr key={poi.id} className="hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-colors group">
+                                        {filteredPOIs.map((poi, idx) => (
+                                            <tr key={poi.id || `row-${idx}`} className="hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-colors group">
                                                 <td className="p-4 border-b dark:border-gray-700">
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-12 h-12 bg-white dark:bg-gray-900 shadow-sm rounded-2xl flex items-center justify-center text-emerald-600 border border-gray-100 dark:border-gray-800 group-hover:scale-110 transition-transform overflow-hidden">
@@ -1231,7 +1304,7 @@ const POIMonitoringPage = () => {
                                         className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs font-bold text-gray-500 outline-none w-32"
                                     >
                                         <option value="">Select Zone</option>
-                                        {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
+                                        {zones.map((z, idx) => <option key={z.id || `zone-modal-${idx}`} value={z.name}>{z.name}</option>)}
                                     </select>
                                     <select
                                         value={reportFilters.ward}
@@ -1242,7 +1315,7 @@ const POIMonitoringPage = () => {
                                         <option value="">Select Ward</option>
                                         {wards
                                             .filter(w => w.zoneName === reportFilters.zone)
-                                            .map(w => <option key={w.id} value={w.name}>{w.name}</option>)
+                                            .map((w, idx) => <option key={w.id || `ward-modal-${idx}`} value={w.name}>{w.name}</option>)
                                         }
                                     </select>
                                     <select

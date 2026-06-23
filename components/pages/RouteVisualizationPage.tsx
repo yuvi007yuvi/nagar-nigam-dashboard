@@ -68,7 +68,7 @@ const MapBoundsSetter = ({ data, allRoutes }: { data: any, allRoutes: Route[] })
 };
 
 const RouteVisualizationPage = () => {
-    const { zones, wards, customers } = useData();
+    const { zones, wards, customers, coverageRecords } = useData();
     const [routes, setRoutes] = useState<Route[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedZone, setSelectedZone] = useState('');
@@ -283,13 +283,17 @@ const RouteVisualizationPage = () => {
                         )}
 
                         {/* Customer Markers for Focused Route */}
-                        {focusedRoute && customers.filter(c => c.routeId === focusedRoute.routeId && c.lat && c.lng).map((customer, idx) => (
+                        {focusedRoute && customers.filter(c => c.routeId === focusedRoute.routeId && c.lat && c.lng).map((customer, idx) => {
+                            const isCovered = coverageRecords.some((r: any) => r.customerId === (customer.customerId || customer.id));
+                            const markerColor = isCovered ? '#10b981' : '#ef4444'; // Green if covered, Red if pending
+                            
+                            return (
                             <Marker 
                                 key={customer.id || idx} 
                                 position={[parseFloat(customer.lat), parseFloat(customer.lng)]}
                                 icon={L.divIcon({
                                     className: 'custom-div-icon',
-                                    html: `<div style="background-color: #10b981; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);"></div>`,
+                                    html: `<div style="background-color: ${markerColor}; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px ${markerColor}80;"></div>`,
                                     iconSize: [12, 12],
                                     iconAnchor: [6, 6]
                                 })}
@@ -313,7 +317,7 @@ const RouteVisualizationPage = () => {
                                     </div>
                                 </Popup>
                             </Marker>
-                        ))}
+                        )})}
 
                         <MapBoundsSetter data={focusedRouteData} allRoutes={filteredRoutes} />
                     </MapContainer>
