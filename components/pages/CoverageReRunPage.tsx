@@ -162,7 +162,7 @@ const CoverageReRunPage = () => {
                             zone: poi.zone,
                             routeId: poi.routeId || selectedRoute,
                             status: 'Visited',
-                            createdAt: matchingPoint.timestamp || Timestamp.now(),
+                            createdAt: matchingPoint.timestamp ? Timestamp.fromDate(new Date(matchingPoint.timestamp)) : Timestamp.now(),
                             isAutoReRun: true,
                             reRunType: selectedRoute ? 'Route-wise' : 'Ward-wise',
                             sourceDate: selectedDate

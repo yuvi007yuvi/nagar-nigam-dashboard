@@ -164,7 +164,7 @@ const POIMonitoringPage = () => {
     const [stats, setStats] = useState<any>(null);
     const [assignedVehicle, setAssignedVehicle] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const { zones, wards, customers, vehicles: allVehicles, coverageRecords } = useData();
+    const { zones, wards, customers, vehicles: allVehicles, coverageRecords, loading: dataLoading } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedWard, setSelectedWard] = useState('All');
     const [selectedZone, setSelectedZone] = useState('All');
@@ -239,12 +239,15 @@ const POIMonitoringPage = () => {
             let data: any[] = [];
             
             // Build covered set from coverageRecords
-            const targetDateStr = new Date(reportFilters.startDate).toDateString();
+            const [year, month, day] = reportFilters.startDate.split('-').map(Number);
+            const targetDate = new Date(year, month - 1, day);
+            const targetDateStr = targetDate.toDateString();
+
             const coveredCustomerIds = new Set(
                 coverageRecords.filter(r => {
                     const rDate = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
                     // Match the report date
-                    return rDate.toDateString() === targetDateStr || rDate.toISOString().split('T')[0] === reportFilters.startDate;
+                    return rDate.toDateString() === targetDateStr || r.sourceDate === reportFilters.startDate;
                 }).map(r => r.customerId)
             );
 
@@ -283,7 +286,7 @@ const POIMonitoringPage = () => {
                         };
                     }
                     routeGroups[rId].total++;
-                    const isCovered = coveredCustomerIds.has(p.customerId || p.id) || p.status === 'covered';
+                    const isCovered = coveredCustomerIds.has(p.customerId || p.id);
                     
                     if (isCovered) {
                         routeGroups[rId].covered++;
@@ -318,7 +321,7 @@ const POIMonitoringPage = () => {
 
                 data = vehicles.map((v, i) => {
                     const vehiclePois = filteredSource.filter(p => p.vehicleId === v);
-                    const covered = vehiclePois.filter(p => coveredCustomerIds.has(p.customerId || p.id) || p.status === 'covered').length;
+                    const covered = vehiclePois.filter(p => coveredCustomerIds.has(p.customerId || p.id)).length;
                     const total = vehiclePois.length;
                     const perc = total > 0 ? Math.round((covered / total) * 100) : 0;
 
@@ -611,7 +614,7 @@ const POIMonitoringPage = () => {
                             <button
                                 key={i}
                                 onClick={() => handleGenerateReport(report.label)}
-                                disabled={generatingReport !== null}
+                                disabled={generatingReport !== null || dataLoading}
                                 className={`
                                     flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all relative overflow-hidden group
                                     ${generatingReport === report.label

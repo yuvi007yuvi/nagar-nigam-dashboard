@@ -34,25 +34,8 @@ export const getPOIs = async (ward?: string, zone?: string) => {
         const querySnapshot = await getDocs(q);
         const firestorePOIs: POI[] = [];
         
-        // Fetch today's coverage records to determine current status
-        const { getAllCoverageRecords } = await import('./databaseService');
-        const recordsResult = await getAllCoverageRecords();
-        const coveredCustomerIds = new Set();
-        
-        if (recordsResult.success) {
-            const today = new Date().toDateString();
-            recordsResult.data.forEach((r: any) => {
-                const rDate = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
-                if (rDate.toDateString() === today) {
-                    coveredCustomerIds.add(r.customerId);
-                }
-            });
-        }
-        
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            const customerId = data.customerId || doc.id;
-            const isCovered = coveredCustomerIds.has(customerId) || data.status === 'covered';
             
             firestorePOIs.push({
                 id: doc.id,
@@ -62,7 +45,7 @@ export const getPOIs = async (ward?: string, zone?: string) => {
                 ward: data.ward || '',
                 ownerName: data.name || data.ownerName || 'Unknown Owner',
                 houseNumber: data.houseNumber || 'N/A',
-                status: isCovered ? 'covered' : 'pending',
+                status: data.status || 'pending',
                 lastCovered: data.lastCovered,
                 vehicleId: data.vehicleId || 'N/A',
                 imageUrl: data.imageUrl || '',
@@ -146,8 +129,8 @@ export const getCoverageStats = async (ward?: string, zone?: string, date: Date 
         // Fallback: If no status field is used, we check today's coverageRecords
         let actualCovered = coveredCount;
         if (coveredCount === 0 && totalCount > 0) {
-            const { getAllCoverageRecords } = await import('./databaseService');
-            const recordsResult = await getAllCoverageRecords();
+            const { getRecentDocuments } = await import('./databaseService');
+            const recordsResult = await getRecentDocuments('coverageRecords', 3000);
             if (recordsResult.success) {
                 const today = date.toDateString();
                 const todayScans = recordsResult.data.filter((r: any) => {
