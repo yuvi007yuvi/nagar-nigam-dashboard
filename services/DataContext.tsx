@@ -21,6 +21,7 @@ interface DataContextType {
   fuelEntries: any[];
   weighments: any[];
   bulkCollections: any[];
+  bulkCollectionSites: any[];
   coverageRecords: any[];
   attendanceRecords: any[];
   complaints: any[];
@@ -39,6 +40,7 @@ const DataContext = createContext<DataContextType>({
   fuelEntries: [],
   weighments: [],
   bulkCollections: [],
+  bulkCollectionSites: [],
   coverageRecords: [],
   attendanceRecords: [],
   complaints: [],
@@ -57,6 +59,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode; userId?: string
   const [fuelEntries, setFuelEntries] = useState<any[]>([]);
   const [weighments, setWeighments] = useState<any[]>([]);
   const [bulkCollections, setBulkCollections] = useState<any[]>([]);
+  const [bulkCollectionSites, setBulkCollectionSites] = useState<any[]>([]);
   const [coverageRecords, setCoverageRecords] = useState<any[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [complaints, setComplaints] = useState<any[]>([]);
@@ -78,6 +81,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode; userId?: string
         { fn: getAllFuelEntries, setter: setFuelEntries },
         { fn: getAllWeighments, setter: setWeighments },
         { fn: () => getRecentDocuments('bulkCollections', 2000), setter: setBulkCollections },
+        { fn: () => getAllAdminData('bulk_collection_sites'), setter: setBulkCollectionSites },
         { fn: () => getRecentDocuments('coverageRecords', 2000), setter: setCoverageRecords },
         { fn: getAllAttendanceRecords, setter: setAttendanceRecords },
         { fn: getAllComplaints, setter: setComplaints },
@@ -119,6 +123,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode; userId?: string
         fuelEntries,
         weighments,
         bulkCollections,
+        bulkCollectionSites,
         coverageRecords,
         attendanceRecords,
         complaints,

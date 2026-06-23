@@ -201,6 +201,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
     userCharges, 
     complaints, 
     bulkCollections, 
+    bulkCollectionSites,
     attendanceRecords,
     customers,
     coverageRecords,
@@ -271,49 +272,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
   }, [fuelEntries]);
   
   const bulkCollectionData = useMemo(() => {
+    const totalSites = bulkCollectionSites.length;
+    
+    // We consider "Scanned" as sites scanned today
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterdayStart = new Date(todayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    let today = 0, yesterday = 0, tillMonth = 0, prevMonth = 0, earlier = 0;
-
+    const scannedSitesToday = new Set();
+    
     bulkCollections.forEach((r: any) => {
       const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
-      if (isNaN(d.getTime())) return; // Skip invalid dates
-
+      if (isNaN(d.getTime())) return;
       if (d >= todayStart) {
-        today++;
-      } else if (d >= yesterdayStart && d < todayStart) {
-        yesterday++;
-      } else if (d >= thisMonthStart) {
-        // This case is covered by today/yesterday usually, but for completeness
-        tillMonth++;
-      } else if (d >= prevMonthStart && d <= prevMonthEnd) {
-        prevMonth++;
-      } else {
-        earlier++;
-      }
-
-      // Also count toward tillMonth if it's in this month
-      if (d >= thisMonthStart) {
-        tillMonth++;
+        scannedSitesToday.add(r.siteId || r.qr);
       }
     });
 
-    const segments = [
-      { name: 'Today', value: today, color: '#8b5cf6' },
-      { name: 'Yesterday', value: yesterday, color: '#f43f5e' },
-      { name: 'Till Month', value: tillMonth, color: '#10b981' },
-      { name: 'Previous Month', value: prevMonth, color: '#22c55e' },
-      { name: 'Earlier', value: earlier, color: '#64748b' },
-    ].filter(s => s.value > 0 || ['Today', 'Till Month'].includes(s.name)); // Keep key segments even if 0
+    const scannedCount = scannedSitesToday.size;
+    const notScannedCount = Math.max(0, totalSites - scannedCount);
 
-    return { segments };
-  }, [bulkCollections]);
+    const segments = [
+      { name: 'QR Scanned', value: scannedCount, color: '#10b981' }, // Emerald
+      { name: 'Not Scanned', value: notScannedCount, color: '#f43f5e' }, // Rose
+    ];
+
+    return { segments, total: totalSites };
+  }, [bulkCollections, bulkCollectionSites]);
 
   const poiSummary = useMemo(() => {
     const allTotal = customers.length;

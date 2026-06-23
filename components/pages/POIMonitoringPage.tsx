@@ -164,7 +164,7 @@ const POIMonitoringPage = () => {
     const [stats, setStats] = useState<any>(null);
     const [assignedVehicle, setAssignedVehicle] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const { zones, wards, customers, vehicles: allVehicles } = useData();
+    const { zones, wards, customers, vehicles: allVehicles, coverageRecords } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedWard, setSelectedWard] = useState('All');
     const [selectedZone, setSelectedZone] = useState('All');
@@ -238,6 +238,16 @@ const POIMonitoringPage = () => {
 
             let data: any[] = [];
             
+            // Build covered set from coverageRecords
+            const targetDateStr = new Date(reportFilters.startDate).toDateString();
+            const coveredCustomerIds = new Set(
+                coverageRecords.filter(r => {
+                    const rDate = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+                    // Match the report date
+                    return rDate.toDateString() === targetDateStr || rDate.toISOString().split('T')[0] === reportFilters.startDate;
+                }).map(r => r.customerId)
+            );
+
             if (reportType === 'POI Report' || reportType === 'Coverage Overview') {
                 // Group POIs by Route for a summarized report
                 const routeGroups: { [key: string]: any } = {};
@@ -273,7 +283,9 @@ const POIMonitoringPage = () => {
                         };
                     }
                     routeGroups[rId].total++;
-                    if (p.status === 'covered') {
+                    const isCovered = coveredCustomerIds.has(p.customerId || p.id) || p.status === 'covered';
+                    
+                    if (isCovered) {
                         routeGroups[rId].covered++;
                     } else {
                         routeGroups[rId].pending++;
@@ -306,7 +318,7 @@ const POIMonitoringPage = () => {
 
                 data = vehicles.map((v, i) => {
                     const vehiclePois = filteredSource.filter(p => p.vehicleId === v);
-                    const covered = vehiclePois.filter(p => p.status === 'covered').length;
+                    const covered = vehiclePois.filter(p => coveredCustomerIds.has(p.customerId || p.id) || p.status === 'covered').length;
                     const total = vehiclePois.length;
                     const perc = total > 0 ? Math.round((covered / total) * 100) : 0;
 
