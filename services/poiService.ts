@@ -16,6 +16,10 @@ export interface POI {
     zone?: string;
     routeId?: string;
     lastVisited?: string;
+    customerId?: string;
+    mobileNumber?: string;
+    propertySubType?: string;
+    kycDate?: string;
 }
 
 export const getPOIs = async (ward?: string, zone?: string) => {
@@ -51,7 +55,11 @@ export const getPOIs = async (ward?: string, zone?: string) => {
                 imageUrl: data.imageUrl || '',
                 zone: data.zone || '',
                 routeId: data.routeId || '',
-                lastVisited: data.lastVisited || ''
+                lastVisited: data.lastVisited || '',
+                customerId: data.customerId || '',
+                mobileNumber: data.mobileNumber || '',
+                propertySubType: data.propertySubType || '',
+                kycDate: data.kycDate || ''
             });
         });
 

@@ -184,6 +184,23 @@ const CoverageReRunPage = () => {
 
             if (batchCount > 0) await batch.commit();
 
+            // Store Re-run activity logs in Firestore database
+            try {
+                await addDoc(collection(db, 'rerun_history'), {
+                    date: selectedDate,
+                    ward: selectedWard,
+                    route: selectedRoute,
+                    vehicle: selectedVehicle,
+                    totalPOIs: targetPOIs.length,
+                    newlyCovered: coveredCount,
+                    timestamp: Timestamp.now(),
+                    logs: statusLog.map(l => l.msg).reverse()
+                });
+                addLog('Analysis logs saved to database history.', 'success');
+            } catch (saveError: any) {
+                console.error('Error saving rerun logs:', saveError);
+            }
+
             addLog(`Re-run complete! ${coveredCount} POIs were successfully updated.`, 'success');
             setResults({ total: targetPOIs.length, newlyCovered: coveredCount });
 

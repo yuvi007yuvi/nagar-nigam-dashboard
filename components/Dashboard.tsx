@@ -586,19 +586,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerateInsight }) => {
               zoom={13}
               style={{ height: '100%', width: '100%' }}
               className="z-0"
+              maxZoom={22}
             >
-              {isSatelliteView ? (
-                <TileLayer
-                  attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
-                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  maxZoom={19}
-                />
-              ) : (
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-              )}
+              <TileLayer
+                attribution="&copy; Google Maps"
+                url={isSatelliteView
+                  ? 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+                  : 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
+                }
+                maxZoom={22}
+                maxNativeZoom={20}
+              />
               {vehicles.map((vehicle, idx) => (
                 <Marker
                   key={`${vehicle.imei}-${idx}`}

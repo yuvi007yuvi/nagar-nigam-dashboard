@@ -249,10 +249,13 @@ const RouteVisualizationPage = () => {
                         center={[27.4924, 77.6737]} 
                         zoom={13} 
                         className="w-full h-full z-0"
+                        maxZoom={22}
                     >
                         <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            attribution='&copy; Google Maps'
+                            url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+                            maxZoom={22}
+                            maxNativeZoom={20}
                         />
                         
                         {/* Background Routes */}

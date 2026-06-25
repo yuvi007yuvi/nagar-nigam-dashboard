@@ -508,13 +508,16 @@ const VehicleHistoryPage: React.FC = () => {
             zoom={13} 
             style={{ height: '100%', width: '100%' }}
             className="z-0"
+            maxZoom={22}
           >
             <TileLayer
-              attribution={mapType === 'street' ? '&copy; OpenStreetMap contributors' : '&copy; Google Maps'}
+              attribution='&copy; Google Maps'
               url={mapType === 'street'
-                  ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                  : 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
+                  ? 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
+                  : 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
               }
+              maxZoom={22}
+              maxNativeZoom={20}
             />
             <KMLLayers visible={showKMLLayers} />
             

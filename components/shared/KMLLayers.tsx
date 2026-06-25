@@ -4,6 +4,7 @@ import { getAllAdminData, getLargeDocument } from '../../services/databaseServic
 
 interface KMLLayersProps {
     visible: boolean;
+    wardName?: string;
 }
 
 // Vibrant colors for different polygons
@@ -23,7 +24,28 @@ const getColorByString = (str: string) => {
     return VIBRANT_COLORS[index];
 };
 
-const KMLLayers: React.FC<KMLLayersProps> = ({ visible }) => {
+const isWardMatch = (featureName: string, targetWard: string) => {
+    if (!featureName || !targetWard) return false;
+    
+    const normalize = (str: string) => {
+        let s = str.toLowerCase();
+        // Remove common prefixes
+        s = s.replace(/ward\s*no\s*/g, '')
+             .replace(/ward\s*/g, '')
+             .replace(/\bno\b/g, '');
+        // If it starts with 'w' followed by a digit (e.g. w41), strip the 'w'
+        s = s.replace(/^w(\d+)/g, '$1');
+        // Keep only alphanumeric characters
+        return s.replace(/[^a-z0-9]/g, '');
+    };
+
+    const cleanFeature = normalize(featureName);
+    const cleanTarget = normalize(targetWard);
+    
+    return cleanFeature === cleanTarget || cleanFeature.includes(cleanTarget) || cleanTarget.includes(cleanFeature);
+};
+
+const KMLLayers: React.FC<KMLLayersProps> = ({ visible, wardName }) => {
     const [layers, setLayers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -76,6 +98,18 @@ const KMLLayers: React.FC<KMLLayersProps> = ({ visible }) => {
                         console.error('Failed to parse GeoJSON for layer', layer.id, e);
                         return null;
                     }
+                }
+                
+                // Filter features if wardName is specified
+                if (wardName && geojsonData && geojsonData.type === 'FeatureCollection' && Array.isArray(geojsonData.features)) {
+                    const filteredFeatures = geojsonData.features.filter((f: any) => {
+                        const name = f.properties?.name || '';
+                        return isWardMatch(name, wardName);
+                    });
+                    geojsonData = {
+                        ...geojsonData,
+                        features: filteredFeatures
+                    };
                 }
                 
                 // Ensure we have a valid GeoJSON object

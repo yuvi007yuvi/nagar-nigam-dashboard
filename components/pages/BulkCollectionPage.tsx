@@ -248,9 +248,12 @@ const BulkCollectionPage = () => {
                 <div className="relative min-h-[600px]">
                     {activeTab === 'analytics' ? (
                         <div className="h-[600px] w-full relative z-0">
-                            <MapContainer center={[27.4924, 77.6737]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                            <MapContainer center={[27.4924, 77.6737]} zoom={13} style={{ height: '100%', width: '100%' }} maxZoom={22}>
                                 <TileLayer
-                                    url={mapType === 'street' ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' : 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'}
+                                    attribution="&copy; Google Maps"
+                                    url={mapType === 'street' ? 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}' : 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'}
+                                    maxZoom={22}
+                                    maxNativeZoom={20}
                                 />
                                 <KMLLayers visible={true} />
                                 {/* Markers for collection sites */}

@@ -35,10 +35,13 @@ const MapComponent: React.FC<MapProps> = ({
         zoom={zoom} 
         style={{ height: '100%', width: '100%' }}
         className="z-0"
+        maxZoom={22}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; Google Maps'
+          url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+          maxZoom={22}
+          maxNativeZoom={20}
         />
         {markers.map((marker, index) => (
           <Marker key={index} position={marker.position}>

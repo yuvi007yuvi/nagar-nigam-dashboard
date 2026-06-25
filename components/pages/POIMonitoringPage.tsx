@@ -13,6 +13,7 @@ import PageHeader from '../shared/PageHeader';
 import KMLLayers from '../shared/KMLLayers';
 import AssetLayers from '../shared/AssetLayers';
 import MapSettingsOverlay from '../shared/MapSettingsOverlay';
+import TripPlaybackModal from '../shared/TripPlaybackModal';
 import { useData } from '../../services/DataContext';
 
 import { getAuth } from 'firebase/auth';
@@ -34,17 +35,17 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const getPinIcon = (color: string) => {
     const svg = `
-        <svg width="30" height="40" viewBox="0 0 30 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15 0C6.71573 0 0 6.71573 0 15C0 26.25 15 40 15 40C15 40 30 26.25 30 15C30 6.71573 23.2843 0 15 0Z" fill="${color}" stroke="white" stroke-width="2"/>
-            <circle cx="15" cy="15" r="5" fill="white"/>
+        <svg width="12" height="18" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 36 12 36C12 36 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="${color}"/>
+            <circle cx="12" cy="12" r="4.5" fill="white"/>
         </svg>
     `;
     return L.divIcon({
         html: svg,
         className: 'custom-pin-icon',
-        iconSize: [30, 40],
-        iconAnchor: [15, 40],
-        popupAnchor: [0, -40]
+        iconSize: [12, 18],
+        iconAnchor: [6, 18],
+        popupAnchor: [0, -18]
     });
 };
 
@@ -78,21 +79,21 @@ const MapBoundsSetter = ({ routePath, pois }: { routePath: any, pois: any[] }) =
             try {
                 const geoJsonLayer = L.geoJSON(routePath);
                 if (geoJsonLayer.getLayers().length > 0) {
-                    map.fitBounds(geoJsonLayer.getBounds(), { padding: [50, 50] });
+                    map.fitBounds(geoJsonLayer.getBounds(), { padding: [50, 50], animate: true, duration: 1.5 });
                 }
             } catch (e) {
                 console.error("Error fitting route bounds:", e);
                 // Fallback for custom objects if they have coordinates
                 if (routePath.plannedRoute && routePath.plannedRoute.length > 0) {
                     const bounds = L.latLngBounds(routePath.plannedRoute);
-                    map.fitBounds(bounds, { padding: [50, 50] });
+                    map.fitBounds(bounds, { padding: [50, 50], animate: true, duration: 1.5 });
                 }
             }
         } else if (pois && pois.length > 0) {
             try {
                 const points = pois.map(p => [p.lat, p.lng] as [number, number]);
                 const bounds = L.latLngBounds(points);
-                map.fitBounds(bounds, { padding: [50, 50] });
+                map.fitBounds(bounds, { padding: [50, 50], animate: true, duration: 1.5 });
             } catch (e) {
                 console.error("Error fitting POI bounds:", e);
             }
@@ -186,7 +187,14 @@ const POIMonitoringPage = () => {
         endDate: new Date().toISOString().split('T')[0]
     });
     const [isStale, setIsStale] = useState(false);
-    const [playbackTarget, setPlaybackTarget] = useState<{ward: string, zone: string, route: string, date: string} | null>(null);
+    const [playbackModalData, setPlaybackModalData] = useState<any>(null);
+    const [playbackLoadingRow, setPlaybackLoadingRow] = useState<number | null>(null);
+    const [modalMapType, setModalMapType] = useState<'street' | 'satellite'>('street');
+    const [showModalBoundary, setShowModalBoundary] = useState(true);
+    const [showModalPOI, setShowModalPOI] = useState(true);
+    const [showModalHistory, setShowModalHistory] = useState(true);
+    const [showModalSettingsOpen, setShowModalSettingsOpen] = useState(false);
+    const [hideZeroCoverage, setHideZeroCoverage] = useState(false);
 
     useEffect(() => {
         const auth = getAuth();
@@ -308,28 +316,36 @@ const POIMonitoringPage = () => {
                     }
                 });
 
-                data = Object.values(routeGroups).map((group: any, i) => {
-                    let finalVehicle = group.vehicle;
-                    if (finalVehicle === 'N/A' && group.actualVehicles && group.actualVehicles.size > 0) {
-                        finalVehicle = Array.from(group.actualVehicles).join(', ');
-                    }
+                data = Object.values(routeGroups)
+                    .sort((a: any, b: any) => {
+                        const pctA = a.total > 0 ? (a.covered / a.total) : 0;
+                        const pctB = b.total > 0 ? (b.covered / b.total) : 0;
+                        return pctB - pctA;
+                    })
+                    .map((group: any, i) => {
+                        let finalVehicle = 'N/A';
+                        if (group.actualVehicles && group.actualVehicles.size > 0) {
+                            finalVehicle = Array.from(group.actualVehicles)[0] as string;
+                        } else if (group.vehicle && group.vehicle !== 'N/A') {
+                            finalVehicle = group.vehicle.split(',')[0].trim();
+                        }
 
-                    return {
-                        sno: i + 1,
-                        zone: group.zone,
-                        ward: group.ward,
-                        vehicle: finalVehicle,
-                        vtype: group.vtype,
-                    route: group.route,
-                    total: group.total,
-                    covered: group.covered,
-                    pending: group.pending,
-                    coverage: `${Math.round((group.covered / group.total) * 100)}%`,
-                    date: reportFilters.startDate,
-                    inTime: group.covered > 0 ? (group.lastVisited || '08:30 AM') : 'N/A',
-                    outTime: group.covered > 0 ? '02:00 PM' : '-'
-                    };
-                });
+                        return {
+                            sno: i + 1,
+                            zone: group.zone,
+                            ward: group.ward,
+                            vehicle: finalVehicle,
+                            vtype: group.vtype,
+                            route: group.route,
+                            total: group.total,
+                            covered: group.covered,
+                            pending: group.pending,
+                            coverage: `${Math.round((group.covered / group.total) * 100)}%`,
+                            date: reportFilters.startDate,
+                            inTime: group.covered > 0 ? (group.lastVisited || '08:30 AM') : 'N/A',
+                            outTime: group.covered > 0 ? '02:00 PM' : '-'
+                        };
+                    });
             } else if (reportType === 'Trip Report' || reportType === 'Distance Report') {
                 // Generate per-vehicle summary
                 const vehicles = Array.from(new Set(filteredSource.map(p => p.vehicleId).filter(v => v && v !== 'N/A')));
@@ -368,24 +384,179 @@ const POIMonitoringPage = () => {
         }
     };
 
-    const handlePlayback = async (row: any) => {
-        setShowReport(false);
+    const handlePlayback = async (row: any, rowIdx: number) => {
+        setPlaybackLoadingRow(rowIdx);
         setLoading(true);
-        setViewMode('map'); // Force view to map
-        
-        if (row.ward && row.ward !== 'N/A') setSelectedWard(row.ward);
-        if (row.zone && row.zone !== 'N/A') setSelectedZone(row.zone);
-        if (row.route && row.route !== 'Unassigned') setSelectedRoute(row.route);
-        
-        // Update the main view date to match the report date
-        setSelectedDate(reportFilters.startDate);
+        try {
+            const ward = row.ward !== 'N/A' ? row.ward : '';
+            const zone = row.zone !== 'N/A' ? row.zone : '';
+            const route = row.route !== 'Unassigned' ? row.route : '';
+            const date = reportFilters.startDate;
 
-        setPlaybackTarget({
-            ward: row.ward !== 'N/A' ? row.ward : '',
-            zone: row.zone !== 'N/A' ? row.zone : '',
-            route: row.route !== 'Unassigned' ? row.route : '',
-            date: reportFilters.startDate
-        });
+            // Fetch POIs for this ward
+            let poisForModal = [];
+            if (ward !== 'All' && ward !== '') {
+                const poiResult = await getPOIs(ward === 'All' ? undefined : ward, zone === 'All' ? undefined : zone);
+                if (poiResult.success && poiResult.data && poiResult.data.length > 0) {
+                    poisForModal = poiResult.data;
+                } else {
+                    // Fallback to local customers context
+                    poisForModal = customers.filter(c => c.ward === ward);
+                }
+            }
+
+            // Align POI statuses with today's/selected date's coverage records
+            const [year, month, day] = date.split('-').map(Number);
+            const targetDate = new Date(year, month - 1, day);
+            const targetDateStr = targetDate.toDateString();
+            
+            let activeCoverageRecords = coverageRecords;
+            if (date !== new Date().toISOString().split('T')[0]) {
+                const { getCoverageByDate } = await import('../../services/databaseService');
+                const res = await getCoverageByDate(date);
+                if (res.success && res.data) {
+                    activeCoverageRecords = res.data;
+                }
+            }
+            
+            const rowVehiclesStr = row.vehicle || '';
+            const vehicleList = rowVehiclesStr.split(/[;,]/).map((v: string) => v.trim()).filter(v => v && v !== 'N/A');
+
+            const coveredCustomerIds = new Set();
+            const coveredDetailsMap = new Map<string, { lastCovered: any, vehicleId: string }>();
+
+            activeCoverageRecords.forEach((r: any) => {
+                const rDate = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+                if (rDate.toDateString() === targetDateStr || r.sourceDate === date) {
+                    let isVehicleMatched = true;
+                    if (vehicleList.length > 0) {
+                        const recVehicle = (r.vehicleId || r.imei || '').toString().toLowerCase();
+                        isVehicleMatched = vehicleList.some(v => {
+                            const cleanV = v.toLowerCase();
+                            return recVehicle.includes(cleanV) || cleanV.includes(recVehicle);
+                        });
+                    }
+
+                    if (isVehicleMatched) {
+                        let displayVehicleName = 'Unknown Vehicle';
+                        const recVehicle = (r.vehicleId || r.imei || '').toString();
+                        if (recVehicle) {
+                            const matchedVehicle = (allVehicles || []).find((v: any) => 
+                                v.imei === recVehicle || 
+                                v.id === recVehicle ||
+                                (v.name && v.name.toLowerCase() === recVehicle.toLowerCase()) ||
+                                (v.plateNumber && v.plateNumber.toLowerCase() === recVehicle.toLowerCase())
+                            );
+                            if (matchedVehicle) {
+                                displayVehicleName = matchedVehicle.name || matchedVehicle.plateNumber;
+                            } else {
+                                displayVehicleName = recVehicle;
+                            }
+                        }
+
+                        coveredCustomerIds.add(r.customerId);
+                        coveredDetailsMap.set(r.customerId, {
+                            lastCovered: r.createdAt,
+                            vehicleId: displayVehicleName
+                        });
+                    }
+                }
+            });
+
+            poisForModal = poisForModal.map(p => {
+                const isCovered = (coveredCustomerIds.has(p.id) || coveredCustomerIds.has(p.customerId));
+                const details = isCovered ? (coveredDetailsMap.get(p.id) || coveredDetailsMap.get(p.customerId)) : null;
+                return {
+                    ...p,
+                    status: isCovered ? 'covered' : 'missed',
+                    lastCovered: details ? details.lastCovered : p.lastCovered || null,
+                    vehicleId: details ? details.vehicleId : p.vehicleId || null
+                };
+            });
+
+            // Figure out the actual route ID using available ward_routes
+            let actualRouteId = route;
+            const routesResult = await getWardRoutes(ward);
+            if (routesResult.success && 'data' in routesResult) {
+                const routes = routesResult.data as any[];
+                const matchedRoute = routes.find(r => 
+                    r.id === route || r.name === route || r.routeId === route
+                );
+                if (matchedRoute) actualRouteId = matchedRoute.id;
+            }
+
+            // Filter POIs to only those belonging to the selected route
+            poisForModal = poisForModal.filter((p: any) => 
+                p.routeId === route || p.routeId === actualRouteId || p.route === route || p.route === actualRouteId
+            );
+
+            let routePathForModal = null;
+            let historyForModal = [];
+            let assignedVehicleForModal = null;
+
+            const { getAllAdminData } = await import('../../services/databaseService');
+            const [routeFetchResult, vehiclesResult] = await Promise.all([
+                getRouteData(actualRouteId),
+                getAllAdminData('vehicles')
+            ]);
+
+            if (routeFetchResult.success) {
+                routePathForModal = routeFetchResult.data;
+            }
+
+            if (vehiclesResult.success) {
+                // Find vehicle matching the current row's assigned vehicles list or route name/id
+                const rowVehiclesStr = row.vehicle || '';
+                const vehicleList = rowVehiclesStr.split(/[;,]/).map((v: string) => v.trim());
+                
+                assignedVehicleForModal = (vehiclesResult.data as any[]).find((v: any) => {
+                    const isNameOrPlateMatched = vehicleList.includes(v.name) || vehicleList.includes(v.plateNumber) || vehicleList.includes(v.vehicleNumber);
+                    if (isNameOrPlateMatched) return true;
+                    
+                    const routeStr = v.allAssignedRoutes || v.assignedRouteId || '';
+                    const routes = routeStr.toString().split(/[;,]/).map((r: string) => r.trim());
+                    return routes.includes(actualRouteId) || routes.includes(route) || v.assignedRouteId === actualRouteId;
+                }) || null;
+
+                if (assignedVehicleForModal && assignedVehicleForModal.imei) {
+                    const { collection, query, where, getDocs, orderBy } = await import('firebase/firestore');
+                    const { db } = await import('../../services/firebaseConfig');
+                    
+                    const snapshotsCol = collection(db, 'vehicle_history_snapshots');
+                    const q = query(
+                        snapshotsCol,
+                        where('day', '==', date),
+                        orderBy('timestamp', 'asc')
+                    );
+                    
+                    const querySnapshot = await getDocs(q);
+                    const allSnapshots = querySnapshot.docs.map(doc => doc.data());
+                    
+                    historyForModal = allSnapshots
+                        .map(snap => {
+                            const vData = snap.vehicles?.find((v: any) => v.imei === assignedVehicleForModal?.imei);
+                            return vData ? { ...vData, timestamp: snap.timestamp } : null;
+                        })
+                        .filter(Boolean) as any[];
+                }
+            }
+
+            setPlaybackModalData({
+                routePath: routePathForModal,
+                historyData: historyForModal,
+                pois: poisForModal,
+                vehicle: assignedVehicleForModal,
+                vehicleName: row.vehicle,
+                ward, route, date,
+                routeName: row.route
+            });
+
+        } catch (error) {
+            console.error("Error setting up playback modal:", error);
+        } finally {
+            setPlaybackLoadingRow(null);
+            setLoading(false);
+        }
     };
     const [routePath, setRoutePath] = useState<any>(null);
     const [wardRoads, setWardRoads] = useState<any[]>([]);
@@ -507,14 +678,7 @@ const POIMonitoringPage = () => {
         }
     };
 
-    useEffect(() => {
-        // Auto-load route and customers when playback target is ready
-        if (playbackTarget) {
-            handleLoadCustomers(playbackTarget.ward, playbackTarget.zone);
-            handleLoadRoute(playbackTarget.route, playbackTarget.date);
-            setPlaybackTarget(null);
-        }
-    }, [playbackTarget]);
+
 
     const filteredPOIs = pois.filter(poi =>
         (poi.ownerName || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
@@ -910,13 +1074,16 @@ const POIMonitoringPage = () => {
                                 center={[27.4924, 77.6737]}
                                 zoom={14}
                                 style={{ height: '100%', width: '100%' }}
+                                maxZoom={22}
                             >
                                 <TileLayer
-                                    attribution={mapType === 'street' ? '&copy; OpenStreetMap contributors' : '&copy; Google Maps'}
+                                    attribution='&copy; Google Maps'
                                     url={mapType === 'street'
-                                        ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                                        : 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
+                                        ? 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
+                                        : 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
                                     }
+                                    maxZoom={22}
+                                    maxNativeZoom={20}
                                 />
 
                                 <MapBoundsSetter routePath={routePath} pois={filteredPOIs} />
@@ -1018,10 +1185,21 @@ const POIMonitoringPage = () => {
                                                      </div>
                                                  )}
                                                  <div className="p-3">
-                                                     <h4 className="font-black text-gray-900 dark:text-white uppercase tracking-tight mb-1">{poi.ownerName}</h4>
-                                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">{poi.houseNumber}</p>
-                                                     
-                                                     <div className="space-y-2 py-2 border-t border-gray-100 dark:border-gray-700">
+                                                      <h4 className="font-black text-gray-900 dark:text-white uppercase tracking-tight mb-1">{poi.ownerName}</h4>
+                                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">{poi.houseNumber}</p>
+                                                      {poi.customerId && (
+                                                        <p className="text-[10px] text-gray-500">Customer ID: {poi.customerId}</p>
+                                                      )}
+                                                      {poi.mobileNumber && (
+                                                        <p className="text-[10px] text-gray-500">Mobile: {poi.mobileNumber}</p>
+                                                      )}
+                                                      {poi.propertySubType && (
+                                                        <p className="text-[10px] text-gray-500">Property Sub-Type: {poi.propertySubType}</p>
+                                                      )}
+                                                      {poi.kycDate && (
+                                                        <p className="text-[10px] text-gray-500">KYC Date: {poi.kycDate}</p>
+                                                      )}
+                                                      <div className="space-y-2 py-2 border-t border-gray-100 dark:border-gray-700">
                                                          <div className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-300">
                                                              <MapPin size={12} className="text-gray-400" />
                                                              <span className="font-medium line-clamp-1">{poi.address}</span>
@@ -1287,12 +1465,21 @@ const POIMonitoringPage = () => {
                                         <span>Pending Count : <span className="text-red-600">{reportData.filter(r => r.pending === 1).length}</span></span>
                                     </div>
 
-                                    {/* Legend */}
-                                    <div className="flex items-center gap-4 text-[10px] uppercase tracking-wider">
-                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-red-500 rounded-sm"></div> 0-30%</div>
-                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-gray-400 rounded-sm"></div> 31-60%</div>
-                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-blue-600 rounded-sm"></div> 61-80%</div>
-                                        <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div> 81-100%</div>
+                                    {/* Legend & Checkbox */}
+                                    <div className="flex items-center gap-6">
+                                        <div className="flex items-center gap-4 text-[10px] uppercase tracking-wider">
+                                            <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-red-500 rounded-sm"></div> 0-30%</div>
+                                            <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-gray-400 rounded-sm"></div> 31-60%</div>
+                                            <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-blue-600 rounded-sm"></div> 61-80%</div>
+                                            <div className="flex items-center gap-1.5 font-black"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div> 81-100%</div>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={hideZeroCoverage} 
+                                            onChange={(e) => setHideZeroCoverage(e.target.checked)}
+                                            title="Hide 0% Coverage"
+                                            className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-5 h-5 cursor-pointer"
+                                        />
                                     </div>
                                 </div>
 
@@ -1391,36 +1578,44 @@ const POIMonitoringPage = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                                            {reportData.length === 0 ? (
+                                            {reportData.filter(r => !hideZeroCoverage || r.coverage !== '0%').length === 0 ? (
                                                 <tr>
                                                     <td colSpan={20} className="px-4 py-20 text-center text-gray-400 font-black uppercase tracking-widest bg-gray-50/50 dark:bg-gray-900/50">
                                                         No matching records found for the selected filters
                                                     </td>
                                                 </tr>
                                             ) : (
-                                                reportData.map((row, idx) => (
-                                                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors text-[11px] font-bold text-gray-700 dark:text-gray-300">
-                                                        {Object.entries(row).map(([key, value]: [string, any], i) => (
-                                                            <td key={i} className={`px-4 py-4 border-r dark:border-gray-700 ${key === 'ward' ? 'text-blue-600 dark:text-blue-400' : ''} ${key === 'coverage' ? 'font-black text-emerald-600' : ''}`}>
-                                                                {value}
-                                                            </td>
-                                                        ))}
-                                                        <td className="px-4 py-4 text-center">
-                                                            <button 
-                                                                onClick={() => handlePlayback(row)}
-                                                                className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-all shadow-sm hover:shadow-md"
-                                                                title="View Playback on Map"
-                                                            >
-                                                                <Activity size={14} />
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))
+                                                reportData
+                                                    .filter(r => !hideZeroCoverage || r.coverage !== '0%')
+                                                    .map((row, idx) => (
+                                                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                                                            {Object.entries(row).map(([key, value]: [string, any], i) => (
+                                                                <td key={i} className={`px-4 py-4 border-r dark:border-gray-700 ${key === 'ward' ? 'text-blue-600 dark:text-blue-400' : ''} ${key === 'coverage' ? 'font-black text-emerald-600' : ''}`}>
+                                                                    {key === 'sno' ? idx + 1 : value}
+                                                                </td>
+                                                            ))}
+                                                            <td className="px-4 py-4 text-center">
+                                                                 <button 
+                                                                     onClick={() => handlePlayback(row, idx)}
+                                                                     disabled={playbackLoadingRow !== null}
+                                                                     className={`p-1.5 rounded transition-all shadow-sm hover:shadow-md ${playbackLoadingRow === idx ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}
+                                                                     title="View Playback on Map"
+                                                                 >
+                                                                     {playbackLoadingRow === idx ? (
+                                                                         <RefreshCw size={14} className="animate-spin" />
+                                                                     ) : (
+                                                                         <Activity size={14} />
+                                                                     )}
+                                                                 </button>
+                                                             </td>
+                                                        </tr>
+                                                    ))
                                             )}
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
+                            
 
                             {/* Modal Footer */}
                             <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 flex justify-end">
@@ -1431,10 +1626,17 @@ const POIMonitoringPage = () => {
                                     Close Report
                                 </button>
                             </div>
-                        </motion.div>
+</motion.div>
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Trip Playback Modal Overlay */}
+            <TripPlaybackModal 
+                isOpen={!!playbackModalData} 
+                onClose={() => setPlaybackModalData(null)} 
+                data={playbackModalData} 
+            />
 
         </motion.div>
     );
